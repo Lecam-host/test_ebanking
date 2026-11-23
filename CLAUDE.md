@@ -71,7 +71,8 @@ envoyé au serveur dans l'en-tête `Idempotency-Key`.
 
 1. **Une clé par intention d'envoi.** Générée une seule fois par formulaire (pas à chaque
    appui), réutilisée pour « Réessayer » et pour toutes les reprises. Nouvelle clé seulement
-   pour un nouveau transfert. Une reprise ne génère **jamais** de nouvelle clé.
+   pour un nouveau transfert. Une reprise ne génère **jamais** de nouvelle clé. Le domaine
+   n'en fabrique jamais : `SendTransfer` la reçoit de l'appelant.
 2. **Saisie invalide** → `ValidationFailure` : rien n'est écrit, aucun appel réseau.
 3. **Clé déjà connue localement** → pas de deuxième transfert. S'il est encore à réconcilier,
    on relance sa réconciliation ; sinon on renvoie son état.
@@ -93,6 +94,9 @@ envoyé au serveur dans l'en-tête `Idempotency-Key`.
    crée jamais de doublon.
 10. **`connectivity_plus` est un déclencheur, jamais une vérité** : seul le serveur dit si un
     transfert existe.
+11. **Une seule façon d'envoyer** : `TransferSender` (`submit` et `reconcile`), partagé par
+    `SendTransfer` et `ResumePendingTransfers`. Il renvoie `Ok(transfert)` y compris en
+    `unknownOutcome`, et `Err` seulement pour un refus (`rejected`) ou une session invalide.
 
 ### Statuts
 
