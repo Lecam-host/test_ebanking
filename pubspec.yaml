@@ -34,6 +34,15 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
+  flutter_riverpod: ^3.5.0
+  dio: ^5.11.1
+  drift: ^2.35.4
+  path_provider: ^2.1.6
+  flutter_secure_storage: ^11.2.0
+  connectivity_plus: ^7.3.2
+  go_router: ^18.1.4
+  uuid: ^4.6.0
+  sqlite3: ^3.9.2
 
 dev_dependencies:
   flutter_test:
@@ -45,6 +54,19 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  build_runner: ^2.17.1
+  drift_dev: ^2.35.3
+  mocktail: ^1.0.5
+  fake_async: ^1.3.3
+
+# Méthode actuelle de Drift pour chiffrer la base : le paquet sqlite3 embarque
+# un binaire SQLCipher à la place de SQLite (hooks de build). La clé est
+# appliquée à l'ouverture avec PRAGMA key. Avec "sqlite3mc", on aurait
+# SQLite3MultipleCiphers, que la doc Drift recommande ; voir CLAUDE.md.
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlcipher
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

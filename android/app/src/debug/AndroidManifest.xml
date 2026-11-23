@@ -4,4 +4,8 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- HTTP en clair autorisé en debug SEULEMENT, pour joindre le serveur
+         simulé (http://10.0.2.2:3000). Ce manifeste n'est fusionné que dans les
+         builds debug : en release, Android refuse le HTTP en clair par défaut. -->
+    <application android:usesCleartextTraffic="true" />
 </manifest>

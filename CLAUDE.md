@@ -50,6 +50,19 @@ test/                       même arborescence que lib/
 - Les erreurs attendues (saisie, réseau, refus serveur) sont des valeurs (`Result` / `Failure`),
   pas des exceptions qui traversent les couches.
 - L'heure et les identifiants passent par `Clock` et `IdGenerator`, pour être remplaçables en test.
+- Ces règles sont vérifiées par `test/architecture_test.dart`.
+
+## Choix techniques
+
+- **Base chiffrée** : Drift sur le SQLite du paquet `sqlite3`, qui embarque SQLCipher grâce aux
+  hooks de build (`hooks.user_defines.sqlite3.source` dans `pubspec.yaml`). La clé est appliquée
+  à l'ouverture avec `PRAGMA key`. Ne pas ajouter `sqlcipher_flutter_libs`,
+  `sqlite3_flutter_libs` ni `drift_flutter` : les deux premiers sont obsolètes, et
+  `drift_flutter` les tire en dépendance. La doc Drift recommande `sqlite3mc`
+  (SQLite3MultipleCiphers) ; passer de l'un à l'autre se fait en une ligne.
+- **URL de l'API** : `--dart-define=API_BASE_URL=...` (`lib/core/config.dart`), par défaut
+  `http://10.0.2.2:3000` (la machine hôte vue depuis l'émulateur Android). HTTP en clair est
+  autorisé seulement dans `android/app/src/debug/AndroidManifest.xml`.
 
 ## Invariants d'envoi (le cœur du test)
 
@@ -127,6 +140,7 @@ flutter test                      # tests unitaires et de widgets
 flutter test --tags integration   # tests d'intégration (serveur simulé lancé sur localhost:3000)
 cd mock_server && npm start       # serveur simulé (npm install la première fois)
 cd mock_server && ./try.sh        # vérification manuelle de l'idempotence et des pannes
+flutter run --dart-define=API_BASE_URL=http://<ip-du-mac>:3000   # vrai téléphone, même Wi-Fi
 ```
 
 ## Interdits
