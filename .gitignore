@@ -34,6 +34,7 @@ migrate_working_dir/
 /coverage/
 /mock_server/node_modules/
 /mock_server/service-account.json
+/firebase_options.dart
 
 # Symbolication related
 app.*.symbols
