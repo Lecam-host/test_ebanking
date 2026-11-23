@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "222353458053",
+    "project_id": "test-ebanking",
+    "storage_bucket": "test-ebanking.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:222353458053:android:20b1425c8053df654cfaec",
+        "android_client_info": {
+          "package_name": "com.example.test_ebanking"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDC-2z-Ha92QarG1GrGkOpHcHnRtqJ7IUY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
