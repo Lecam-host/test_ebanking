@@ -18,6 +18,9 @@ analyzer:
     - windows/**
     - macos/**
     - linux/**
+    # Généré par FlutterFire ; il importe firebase_core, qui n'arrivera qu'avec
+    # l'étape FCM. Retirer cette exclusion à ce moment-là.
+    - lib/firebase_options.dart
 
 linter:
   # The lint rules applied to this project can be customized in the
