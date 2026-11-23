@@ -1,0 +1,11 @@
+# Les tests d'intégration ont besoin du serveur simulé (cd mock_server && npm start) :
+# ils sont donc ignorés par un simple `flutter test`.
+#
+# Pour les lancer : flutter test --tags integration --run-skipped
+#
+# Pourquoi pas `exclude_tags` : les exclusions de ce fichier s'ajoutent à celles
+# de la ligne de commande et l'emportent sur `--tags`, si bien que plus rien
+# ne pourrait lancer ces tests.
+tags:
+  integration:
+    skip: "Serveur simulé requis : flutter test --tags integration --run-skipped"

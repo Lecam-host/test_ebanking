@@ -60,6 +60,14 @@ test/                       même arborescence que lib/
   `sqlite3_flutter_libs` ni `drift_flutter` : les deux premiers sont obsolètes, et
   `drift_flutter` les tire en dépendance. La doc Drift recommande `sqlite3mc`
   (SQLite3MultipleCiphers) ; passer de l'un à l'autre se fait en une ligne.
+- **Clé de la base** : 32 octets aléatoires créés au premier lancement, gardés dans
+  `flutter_secure_storage`, passés en clé brute (`PRAGMA key = "x'...'"`, sans dérivation lente).
+  Une table `transfers` (outbox + cache, clé primaire `idempotencyKey`) et une table `sync_state`
+  d'une ligne. Dates stockées en secondes Unix (défaut Drift).
+- **Erreurs Dio** : dans le doute (coupure, erreur inconnue), `NetworkFailure`, donc résultat
+  inconnu, jamais un refus. Seul un 4xx (sauf 401) donne `RejectedFailure`.
+- **Tests d'intégration** : tag `integration`, ignorés par défaut via `skip` dans `dart_test.yaml`.
+  `exclude_tags` ne convient pas : il l'emporte sur `--tags` et plus rien ne les lancerait.
 - **URL de l'API** : `--dart-define=API_BASE_URL=...` (`lib/core/config.dart`), par défaut
   `http://10.0.2.2:3000` (la machine hôte vue depuis l'émulateur Android). HTTP en clair est
   autorisé seulement dans `android/app/src/debug/AndroidManifest.xml`.
@@ -141,7 +149,8 @@ suivant). Au-delà, une reprise qui reçoit 404 recréerait le transfert.
 ```bash
 flutter analyze
 flutter test                      # tests unitaires et de widgets
-flutter test --tags integration   # tests d'intégration (serveur simulé lancé sur localhost:3000)
+flutter test --tags integration --run-skipped   # tests d'intégration (serveur simulé sur localhost:3000)
+dart run build_runner build       # régénère le code Drift (*.g.dart, commité) après un changement de table
 cd mock_server && npm start       # serveur simulé (npm install la première fois)
 cd mock_server && ./try.sh        # vérification manuelle de l'idempotence et des pannes
 flutter run --dart-define=API_BASE_URL=http://<ip-du-mac>:3000   # vrai téléphone, même Wi-Fi
