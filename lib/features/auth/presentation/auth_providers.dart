@@ -5,6 +5,7 @@ import 'package:test_ebanking/features/auth/domain/ports/session_store.dart';
 import 'package:test_ebanking/features/auth/domain/usecases/pin_lock.dart';
 import 'package:test_ebanking/features/auth/domain/usecases/session_manager.dart';
 import 'package:test_ebanking/features/auth/domain/usecases/sign_out.dart';
+import 'package:test_ebanking/features/push/presentation/push_providers.dart';
 import 'package:test_ebanking/features/transfer/presentation/transfer_providers.dart';
 
 // Ports déclarés sans implémentation, branchés dans lib/app/providers.dart
@@ -42,5 +43,6 @@ final signOutProvider = Provider<SignOut>(
     session: ref.watch(sessionManagerProvider),
     pins: ref.watch(pinStoreProvider),
     transfers: ref.watch(transferLocalStoreProvider),
+    push: ref.watch(pushSubscriptionProvider),
   ),
 );

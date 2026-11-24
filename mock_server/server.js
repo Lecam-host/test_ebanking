@@ -2,6 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const { chaos, setChaos, getChaos } = require('./chaos');
 const { registerAuthRoutes, requireAuth, resetAuth } = require('./auth');
+const { registerPushRoutes, notifyStatusChange, resetDevices } = require('./push');
 
 const app = express();
 app.use(express.json());
@@ -18,6 +19,7 @@ app.use(chaos);
 // Connexion (code SMS, jetons). Les transferts exigent ensuite un jeton d'accès,
 // et chaque client ne voit que les siens (req.phone).
 registerAuthRoutes(app);
+registerPushRoutes(app);
 app.use('/transfers', requireAuth);
 
 // ---------------------------------------------------------------------------
@@ -138,7 +140,13 @@ function toPublic(t) {
 // Administration (pilotage de la démo, jamais perturbé par le chaos)
 // ---------------------------------------------------------------------------
 
-// Fait avancer le statut d'un transfert. L'envoi FCM sera branché ici plus tard.
+// Tous les transferts, du plus récent au plus ancien (pour advance.sh).
+app.get('/admin/transfers', (_req, res) => {
+  const list = [...transfers.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return res.json({ items: list.map(toPublic) });
+});
+
+// Fait avancer le statut d'un transfert, puis prévient le client par FCM.
 const NEXT_STATUS = { SUBMITTED: 'PROCESSING', PROCESSING: 'PAID' };
 
 app.post('/admin/transfers/:id/advance', (req, res) => {
@@ -149,6 +157,8 @@ app.post('/admin/transfers/:id/advance', (req, res) => {
   t.status = target;
   t.updatedAt = new Date().toISOString();
   console.log(`  -> ${t.id} passe à ${t.status}`);
+  // Sans attendre : la réponse admin ne dépend pas de FCM.
+  notifyStatusChange(t).catch((e) => console.log(`  -> erreur FCM : ${e.message}`));
   return res.json(toPublic(t));
 });
 
@@ -168,6 +178,7 @@ app.post('/admin/reset', (_req, res) => {
   transfers.clear();
   byIdempotencyKey.clear();
   resetAuth();
+  resetDevices();
   setChaos({ mode: 'none' });
   return res.json({ ok: true });
 });

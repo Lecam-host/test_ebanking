@@ -14,7 +14,7 @@ expliquée et défendue en entretien.
 - **Historique hors ligne** : il s'affiche sans réseau, avec l'heure de sa dernière mise à jour.
 - **Gestion d'état** : Riverpod, sans génération de code.
 - Énoncé officiel : `~/Downloads/Test_technique_Mobile.pdf` (auth, stockage sécurisé, FCM imposé,
-  design Figma, README et diagrammes exigés). Reste à faire : FCM, design, documentation.
+  design Figma, README et diagrammes exigés). Reste à faire : design, documentation.
 - **Serveur simulé** : `mock_server/` (Node + Express). `mock_server/server.js` est la
   référence du contrat d'API.
 
@@ -77,6 +77,12 @@ test/                       même arborescence que lib/
 - **Code secret** : vérifié sur le téléphone (l'historique doit s'ouvrir en mode avion), gardé en
   empreinte SHA-256 salée ; 5 essais ratés → déconnexion. Déconnexion (`SignOut`) : transferts,
   PIN et session effacés du téléphone, puis révocation côté serveur.
+- **Notifications (FCM)** : firebase_messaging 17, inscription par identifiant d'installation
+  (FID : `register()` / `onRegistered`, `getToken` est déprécié). Le FID est envoyé au serveur
+  (`POST /devices`) et rattaché à la session : une session révoquée ne reçoit plus rien.
+  Arrière-plan / app fermée : notification affichée par le système, l'appui ouvre
+  `/transfers/<clé>` (via le déverrouillage). App ouverte : bandeau dans l'app + rafraîchissement.
+  Texte neutre (ni montant ni bénéficiaire) car visible sur l'écran verrouillé.
 - **Outils réseau partagés** : `lib/core/data/` (`createDio`, `failureFromDioException`). Le dossier
   s'appelle `data` pour que le test d'architecture interdise au domaine de l'importer.
 - **Injection (Riverpod)** : `presentation/transfer_providers.dart` déclare les ports
@@ -158,13 +164,15 @@ Les routes `/transfers` exigent `Authorization: Bearer <jeton d'accès>` (401 `u
 | `GET /admin/otp?phone=` | dernier code SMS (démo, tests) |
 | `POST /admin/sessions/expire` | tous les jetons d'accès expirent (démo « session expirée ») |
 | `POST /admin/sessions/revoke` `{ phone }` | révoque les sessions d'un numéro (démo « téléphone volé ») |
+| `POST /devices` `{ fid }` (jeton requis) | 204 : téléphone inscrit aux notifications de sa session |
+| `GET /admin/transfers` | tous les transferts (pour `advance.sh`) |
 | `POST /transfers` + en-tête `Idempotency-Key` | 201 créé ; 200 doublon reconnu (le transfert existant est renvoyé) ; 400 `idempotency_key_required` ; 422 `validation_error` (avec `details`) ; 422 `idempotency_key_reused` |
 | `GET /transfers` | 200 `{ items: [...], serverTime }`, du plus récent au plus ancien |
 | `GET /transfers?idempotencyKey=K` | 200 transfert ; 404 `not_found` si la clé est inconnue |
 | `GET /transfers/:id` | 200 transfert ; 404 `not_found` |
 | `POST /admin/reset` | vide tout et remet le chaos à `none` |
 | `GET` / `POST /admin/chaos` | lit / règle `{ mode, count?, slowMs? }` |
-| `POST /admin/transfers/:id/advance` | SUBMITTED → PROCESSING → PAID, ou `{ status }` imposé |
+| `POST /admin/transfers/:id/advance` | SUBMITTED → PROCESSING → PAID, ou `{ status }` imposé ; envoie la notification FCM (`mock_server/push.js`, API HTTP v1, cible `fid`) |
 
 Modes de chaos (jamais appliqués aux routes `/admin`) : `none` ; `random` (latence 0,5–3 s,
 10 % d'erreurs 500, 5 % de coupures) ; `slow` (traité, réponse après 30 s) ; `hang` (traité,
@@ -183,6 +191,7 @@ flutter test --tags integration --run-skipped   # tests d'intégration (serveur 
 dart run build_runner build       # régénère le code Drift (*.g.dart, commité) après un changement de table
 cd mock_server && npm start       # serveur simulé (npm install la première fois)
 cd mock_server && ./try.sh        # vérification manuelle de l'idempotence et des pannes
+cd mock_server && ./advance.sh    # fait avancer le dernier transfert → notification FCM
 flutter run --dart-define=API_BASE_URL=http://<ip-du-mac>:3000   # vrai téléphone, même Wi-Fi
 ```
 

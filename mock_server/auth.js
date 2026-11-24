@@ -43,7 +43,14 @@ function requireAuth(req, res, next) {
   if (!session || session.revoked) return res.status(401).json({ error: 'session_revoked' });
   if (Date.now() > access.expiresAt) return res.status(401).json({ error: 'token_expired' });
   req.phone = session.phone;
+  req.sessionId = access.sessionId;
   next();
+}
+
+// Une session active : ni révoquée (déconnexion, vol), ni expirée.
+function isSessionActive(sessionId) {
+  const session = sessions.get(sessionId);
+  return Boolean(session && !session.revoked && Date.now() <= session.expiresAt);
 }
 
 function registerAuthRoutes(app) {
@@ -136,4 +143,4 @@ function resetAuth() {
   refreshTokens.clear();
 }
 
-module.exports = { registerAuthRoutes, requireAuth, resetAuth };
+module.exports = { registerAuthRoutes, requireAuth, resetAuth, isSessionActive };
