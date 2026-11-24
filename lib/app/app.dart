@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:test_ebanking/app/router.dart';
+import 'package:test_ebanking/features/transfer/presentation/auto_resume.dart';
 
-/// Racine de l'application. Le routeur et les providers racine viendront ici ;
-/// en attendant, un écran vide.
-class App extends StatelessWidget {
+/// Racine de l'application.
+class App extends ConsumerWidget {
   const App({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const MaterialApp(
-      title: 'test_ebanking',
-      home: Scaffold(body: Center(child: Text('test_ebanking'))),
-    );
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Démarre la reprise automatique et la garde active tant que l'app tourne.
+    ref.watch(autoResumeProvider);
+    return MaterialApp.router(title: 'test_ebanking', routerConfig: appRouter);
   }
 }

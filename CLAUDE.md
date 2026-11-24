@@ -68,6 +68,14 @@ test/                       même arborescence que lib/
   inconnu, jamais un refus. Seul un 4xx (sauf 401) donne `RejectedFailure`.
 - **Tests d'intégration** : tag `integration`, ignorés par défaut via `skip` dans `dart_test.yaml`.
   `exclude_tags` ne convient pas : il l'emporte sur `--tags` et plus rien ne les lancerait.
+- **Injection (Riverpod)** : `presentation/transfer_providers.dart` déclare les ports
+  (`transferRepositoryProvider`, `transferLocalStoreProvider`, `isOnlineProvider`) sans
+  implémentation et en construit les cas d'usage ; `lib/app/providers.dart` les branche
+  (`overrides` du `ProviderScope`), les tests y branchent des faux.
+- **Formulaire d'envoi** : `SendTransferNotifier` sans autoDispose (quitter l'écran ne crée pas
+  de nouvelle clé) ; une clé par formulaire, figé dès qu'un transfert est enregistré.
+- **Reprise automatique** (`AutoResume`) : au démarrage, au retour du réseau, puis toutes les
+  30 s tant qu'un transfert est incertain ; un seul passage à la fois.
 - **URL de l'API** : `--dart-define=API_BASE_URL=...` (`lib/core/config.dart`), par défaut
   `http://10.0.2.2:3000` (la machine hôte vue depuis l'émulateur Android). HTTP en clair est
   autorisé seulement dans `android/app/src/debug/AndroidManifest.xml`.
