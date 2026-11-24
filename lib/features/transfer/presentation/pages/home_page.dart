@@ -19,7 +19,8 @@ class HomePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final transfers = ref.watch(historyProvider).value?.transfers ?? const [];
+    final history = ref.watch(historyProvider).value;
+    final transfers = history?.transfers ?? const [];
     final now = ref.watch(nowProvider).value ?? ref.watch(clockProvider).now();
     final phone = ref.watch(currentPhoneProvider) ?? '';
 
@@ -41,7 +42,8 @@ class HomePage extends ConsumerWidget {
                   children: [
                     SummaryCard(
                       phone: phone,
-                      sentThisMonth: amountSentThisMonth(transfers, now),
+                      balance: history?.balance,
+                      updated: updatedAgo(history?.lastSyncedAt, now),
                     ),
                     const SizedBox(height: 30),
                     GridView.count(

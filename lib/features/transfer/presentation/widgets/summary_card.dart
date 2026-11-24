@@ -3,19 +3,24 @@ import 'package:test_ebanking/core/presentation/app_colors.dart';
 import 'package:test_ebanking/features/transfer/presentation/formatters.dart';
 
 /// Carte de l'accueil, d'après la carte bancaire du kit : mêmes formes et
-/// couleurs, mais des données réelles (montant envoyé ce mois-ci, numéro du
-/// client masqué) au lieu d'un solde, qui n'existe pas dans ce test.
+/// couleurs, avec le dernier solde connu et le numéro du client masqué.
 ///
 /// Mesures relevées sur la maquette (en points, relatives à la carte).
 class SummaryCard extends StatelessWidget {
   const SummaryCard({
     super.key,
     required this.phone,
-    required this.sentThisMonth,
+    required this.balance,
+    required this.updated,
   });
 
   final String phone;
-  final int sentThisMonth;
+
+  /// Dernier solde reçu du serveur ; null avant la première synchro.
+  final int? balance;
+
+  /// « Mis à jour il y a X min » : hors ligne, le solde peut dater.
+  final String updated;
 
   static const _height = 204.0;
   static const _navy = Color(0xFF1E1672);
@@ -77,16 +82,21 @@ class SummaryCard extends StatelessWidget {
       const Positioned(
         left: 20,
         top: 20,
+        child: Text('Mon compte', style: TextStyle(color: white, fontSize: 24)),
+      ),
+      Positioned(
+        left: 20,
+        top: 56,
         child: Text(
-          'Mes transferts',
-          style: TextStyle(color: white, fontSize: 24),
+          updated,
+          style: const TextStyle(color: Colors.white70, fontSize: 12),
         ),
       ),
       const Positioned(
         left: 20,
         top: 89,
         child: Text(
-          'Envoyé ce mois-ci',
+          'Solde disponible',
           style: TextStyle(
             color: white,
             fontSize: 16,
@@ -106,7 +116,7 @@ class SummaryCard extends StatelessWidget {
         left: 20,
         top: 146,
         child: Text(
-          formatAmount(sentThisMonth),
+          balance == null ? '— FCFA' : formatAmount(balance!),
           style: const TextStyle(
             color: white,
             fontSize: 24,

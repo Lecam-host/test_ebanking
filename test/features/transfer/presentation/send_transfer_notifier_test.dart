@@ -36,6 +36,7 @@ void main() {
         idGeneratorProvider.overrideWithValue(SequentialIdGenerator()),
         pinLockProvider.overrideWithValue(pinLock),
         authNotifierProvider.overrideWith(() => auth),
+        currentPhoneProvider.overrideWithValue('0700000001'),
       ],
     );
   }
@@ -53,6 +54,8 @@ void main() {
 
     expect(sendTransfer.keys, ['key-1', 'key-1']);
     expect(sendTransfer.requests, everyElement(same(validRequest)));
+    // Le domaine reçoit le numéro du client, pour refuser l'envoi à soi-même.
+    expect(sendTransfer.senders, everyElement('0700000001'));
   });
 
   test('formulaire figé : un contenu modifié ne repart pas avec la même '

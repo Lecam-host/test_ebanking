@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:test_ebanking/features/transfer/data/local/transfer_database.dart';
+import 'package:test_ebanking/features/transfer/domain/entities/account_statement.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer_history.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer_status.dart';
@@ -41,18 +42,25 @@ class TransferLocalStoreImpl implements TransferLocalStore {
   }
 
   @override
-  Future<void> saveSyncedHistory(List<Transfer> transfers, DateTime syncedAt) {
+  Future<void> saveSyncedHistory(
+    AccountStatement statement,
+    DateTime syncedAt,
+  ) {
     return _db.transaction(() async {
       await _db.batch((batch) {
         batch.insertAllOnConflictUpdate(
           _db.transfers,
-          transfers.map(_toRow).toList(),
+          statement.transfers.map(_toRow).toList(),
         );
       });
       await _db
           .into(_db.syncState)
           .insertOnConflictUpdate(
-            SyncStateRow(id: _syncRowId, lastSyncedAt: syncedAt),
+            SyncStateRow(
+              id: _syncRowId,
+              lastSyncedAt: syncedAt,
+              balance: statement.balance,
+            ),
           );
     });
   }
@@ -76,8 +84,8 @@ class TransferLocalStoreImpl implements TransferLocalStore {
     await _db.delete(_db.syncState).go();
   });
 
-  /// Les deux lectures dans une transaction : la liste et sa date de synchro
-  /// viennent toujours du même instant.
+  /// Les deux lectures dans une transaction : la liste, sa date de synchro et
+  /// le solde viennent toujours du même instant.
   Future<TransferHistory> _readHistory() => _db.transaction(() async {
     final transfers = await (_db.select(
       _db.transfers,
@@ -88,6 +96,7 @@ class TransferLocalStoreImpl implements TransferLocalStore {
     return TransferHistory(
       transfers: transfers.map(_toEntity).toList(),
       lastSyncedAt: sync?.lastSyncedAt,
+      balance: sync?.balance,
     );
   });
 

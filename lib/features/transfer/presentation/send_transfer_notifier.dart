@@ -119,7 +119,13 @@ class SendTransferNotifier extends Notifier<SendFormState> {
   Future<void> _submit(TransferRequest toSend) async {
     final key = state.idempotencyKey;
     try {
-      final result = await ref.read(sendTransferProvider)(toSend, key);
+      final result = await ref.read(sendTransferProvider)(
+        toSend,
+        key,
+        // Client connecté : on n'arrive ici qu'avec une session déverrouillée.
+        // Sans numéro, la règle reste vérifiée par le serveur (self_transfer).
+        senderPhone: ref.read(currentPhoneProvider) ?? '',
+      );
       if (!ref.mounted) return;
       state = SendFormState(
         idempotencyKey: key,

@@ -3,8 +3,12 @@
 //
 // Lancer d'abord : cd mock_server && npm start
 // Puis : flutter test --tags integration --run-skipped
+// Autre serveur : MOCK_SERVER_URL=http://localhost:3100 flutter test ...
+// (chaque test remet le serveur à zéro : un serveur de démo serait vidé.)
 @Tags(['integration'])
 library;
+
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:drift/native.dart';
@@ -27,11 +31,13 @@ import 'package:test_ebanking/features/transfer/domain/entities/transfer_request
 import 'package:test_ebanking/features/transfer/domain/entities/transfer_status.dart';
 import 'package:test_ebanking/features/transfer/domain/usecases/resume_pending_transfers.dart';
 import 'package:test_ebanking/features/transfer/domain/usecases/send_transfer.dart';
+import 'package:test_ebanking/features/transfer/domain/usecases/sync_history.dart';
 import 'package:test_ebanking/features/transfer/domain/usecases/transfer_sender.dart';
 
 import '../features/auth/auth_fakes.dart';
 
-const _baseUrl = 'http://localhost:3000';
+final _baseUrl =
+    Platform.environment['MOCK_SERVER_URL'] ?? 'http://localhost:3000';
 const _phone = '0700000001';
 
 const _request = TransferRequest(
@@ -51,6 +57,7 @@ void main() {
   late Dio api;
   late SendTransfer sendTransfer;
   late ResumePendingTransfers resume;
+  late SyncHistory sync;
 
   setUpAll(() async {
     try {
@@ -93,18 +100,29 @@ void main() {
     db = TransferDatabase(NativeDatabase.memory());
     store = TransferLocalStoreImpl(db);
     const clock = SystemClock();
+    final repository = TransferRepositoryImpl(TransferApi(api));
     final sender = TransferSender(
-      repository: TransferRepositoryImpl(TransferApi(api)),
+      repository: repository,
       store: store,
       clock: clock,
     );
     sendTransfer = SendTransfer(store: store, sender: sender, clock: clock);
     resume = ResumePendingTransfers(store: store, sender: sender);
+    sync = SyncHistory(repository: repository, store: store, clock: clock);
   });
 
   tearDown(() => db.close());
 
   String newKey() => const UuidIdGenerator().newId();
+
+  Future<Result<Transfer>> send(TransferRequest request, String key) =>
+      sendTransfer(request, key, senderPhone: _phone);
+
+  /// Solde tel que l'app le voit : synchro, puis lecture de la base locale.
+  Future<int?> balanceSeenByApp() async {
+    expect(await sync(), isA<Ok<void>>());
+    return (await store.watchHistory().first).balance;
+  }
 
   Future<void> setChaos(String mode) => admin.post<void>(
     '/admin/chaos',
@@ -120,12 +138,12 @@ void main() {
       isA<Ok<Transfer>>().having((ok) => ok.value.status, 'status', status);
 
   test('drop : transfert créé mais réponse perdue → la reprise le retrouve, '
-      'sans doublon', () async {
+      'sans doublon ni double débit', () async {
     final key = newKey();
     await setChaos('drop');
 
     expect(
-      await sendTransfer(_request, key),
+      await send(_request, key),
       okWithStatus(TransferStatus.unknownOutcome),
     );
 
@@ -135,7 +153,39 @@ void main() {
     final onServer = await transfersOnServer();
     expect(onServer, hasLength(1));
     expect(onServer.single['idempotencyKey'], key);
+    // 1 000 000 - 25 000 : débité une seule fois, malgré la coupure.
+    expect(await balanceSeenByApp(), 975000);
   });
+
+  test(
+    'solde insuffisant → refusé par le serveur, rien n\'est débité',
+    () async {
+      const tooMuch = TransferRequest(
+        amount: 2000000,
+        recipientName: 'Awa Kone',
+        recipientPhone: '0701020304',
+      );
+      final key = newKey();
+
+      final result = await send(tooMuch, key);
+
+      expect(
+        result,
+        isA<Err<Transfer>>().having(
+          (err) => err.failure,
+          'failure',
+          isA<RejectedFailure>().having(
+            (f) => f.code,
+            'code',
+            'insufficient_funds',
+          ),
+        ),
+      );
+      expect((await store.findByKey(key))!.status, TransferStatus.rejected);
+      expect(await transfersOnServer(), isEmpty);
+      expect(await balanceSeenByApp(), 1000000);
+    },
+  );
 
   test('down : coupure avant traitement → la reprise renvoie le POST avec la '
       'même clé, toujours un seul transfert', () async {
@@ -143,7 +193,7 @@ void main() {
     await setChaos('down');
 
     expect(
-      await sendTransfer(_request, key),
+      await send(_request, key),
       okWithStatus(TransferStatus.unknownOutcome),
     );
     expect(await transfersOnServer(), isEmpty); // rien n'a été créé
@@ -163,7 +213,7 @@ void main() {
     await admin.post<void>('/admin/sessions/expire');
 
     expect(
-      await sendTransfer(_request, newKey()),
+      await send(_request, newKey()),
       okWithStatus(TransferStatus.submitted),
     );
     expect(await transfersOnServer(), hasLength(1));
@@ -175,7 +225,7 @@ void main() {
     await admin.post<void>('/admin/sessions/revoke', data: {'phone': _phone});
     final key = newKey();
 
-    final result = await sendTransfer(_request, key);
+    final result = await send(_request, key);
 
     expect(
       result,

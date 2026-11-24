@@ -24,12 +24,22 @@ class SendTransfer {
 
   /// Voir [TransferSender] pour le sens du résultat. `Err(ValidationFailure)`
   /// en plus quand la saisie est invalide.
+  ///
+  /// [senderPhone] : numéro du client connecté. Le solde, lui, n'est pas
+  /// vérifié ici : le dernier solde connu peut être périmé (remboursement,
+  /// recrédit), seul le serveur tranche.
   Future<Result<Transfer>> call(
     TransferRequest request,
-    String idempotencyKey,
-  ) async {
-    // 1. Saisie invalide : rien n'est écrit, aucun appel réseau.
-    final errors = request.validate();
+    String idempotencyKey, {
+    required String senderPhone,
+  }) async {
+    // 1. Saisie invalide, ou envoi à soi-même : rien n'est écrit, aucun appel
+    //    réseau. Le serveur refuse aussi l'envoi à soi-même (self_transfer).
+    final errors = [
+      ...request.validate(),
+      if (request.recipientPhone == senderPhone)
+        'Vous ne pouvez pas vous envoyer de l\'argent.',
+    ];
     if (errors.isNotEmpty) return Err(ValidationFailure(errors));
 
     // 2. Clé déjà connue (double appui, « Réessayer ») : pas de deuxième transfert.

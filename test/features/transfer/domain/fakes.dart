@@ -5,6 +5,7 @@
 import 'package:test_ebanking/core/clock.dart';
 import 'package:test_ebanking/core/failure.dart';
 import 'package:test_ebanking/core/result.dart';
+import 'package:test_ebanking/features/transfer/domain/entities/account_statement.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer_history.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer_request.dart';
@@ -55,6 +56,9 @@ class FakeTransferRepository implements TransferRepository {
   /// Transferts créés côté serveur, par clé.
   final created = <String, Transfer>{};
 
+  /// Solde renvoyé avec l'historique (le domaine ne le calcule jamais).
+  int balance = 1000000;
+
   /// Quand ils sont renseignés, renvoyés à la place de la réponse normale.
   Failure? submitFailure;
   Failure? findFailure;
@@ -84,10 +88,12 @@ class FakeTransferRepository implements TransferRepository {
   }
 
   @override
-  Future<Result<List<Transfer>>> fetchHistory() async {
+  Future<Result<AccountStatement>> fetchHistory() async {
     log.add('api.fetchHistory');
     if (historyFailure case final failure?) return Err(failure);
-    return Ok(created.values.toList());
+    return Ok(
+      AccountStatement(transfers: created.values.toList(), balance: balance),
+    );
   }
 
   @override
@@ -103,6 +109,7 @@ class FakeTransferLocalStore implements TransferLocalStore {
   /// Contenu du stockage, par clé, dans l'ordre de création.
   final byKey = <String, Transfer>{};
   DateTime? lastSyncedAt;
+  int? balance;
 
   @override
   Future<Transfer?> findByKey(String idempotencyKey) async =>
@@ -121,14 +128,15 @@ class FakeTransferLocalStore implements TransferLocalStore {
 
   @override
   Future<void> saveSyncedHistory(
-    List<Transfer> transfers,
+    AccountStatement statement,
     DateTime syncedAt,
   ) async {
     log.add('store.saveSyncedHistory');
-    for (final transfer in transfers) {
+    for (final transfer in statement.transfers) {
       byKey[transfer.idempotencyKey] = transfer;
     }
     lastSyncedAt = syncedAt;
+    balance = statement.balance;
   }
 
   @override
@@ -136,6 +144,7 @@ class FakeTransferLocalStore implements TransferLocalStore {
     log.add('store.clear');
     byKey.clear();
     lastSyncedAt = null;
+    balance = null;
   }
 
   @override
@@ -143,6 +152,7 @@ class FakeTransferLocalStore implements TransferLocalStore {
     TransferHistory(
       transfers: byKey.values.toList(),
       lastSyncedAt: lastSyncedAt,
+      balance: balance,
     ),
   );
 }

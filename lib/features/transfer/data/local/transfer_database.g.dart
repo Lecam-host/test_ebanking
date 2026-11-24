@@ -619,8 +619,19 @@ class $SyncStateTable extends SyncState
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _balanceMeta = const VerificationMeta(
+    'balance',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, lastSyncedAt];
+  late final GeneratedColumn<int> balance = GeneratedColumn<int>(
+    'balance',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, lastSyncedAt, balance];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -647,6 +658,12 @@ class $SyncStateTable extends SyncState
     } else if (isInserting) {
       context.missing(_lastSyncedAtMeta);
     }
+    if (data.containsKey('balance')) {
+      context.handle(
+        _balanceMeta,
+        balance.isAcceptableOrUnknown(data['balance']!, _balanceMeta),
+      );
+    }
     return context;
   }
 
@@ -664,6 +681,10 @@ class $SyncStateTable extends SyncState
         DriftSqlType.dateTime,
         data['${effectivePrefix}last_synced_at'],
       )!,
+      balance: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}balance'],
+      ),
     );
   }
 
@@ -676,17 +697,34 @@ class $SyncStateTable extends SyncState
 class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
   final int id;
   final DateTime lastSyncedAt;
-  const SyncStateRow({required this.id, required this.lastSyncedAt});
+
+  /// Ajouté en version 2. Null tant qu'aucune synchro n'a apporté de solde
+  /// (base créée en version 1).
+  final int? balance;
+  const SyncStateRow({
+    required this.id,
+    required this.lastSyncedAt,
+    this.balance,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['last_synced_at'] = Variable<DateTime>(lastSyncedAt);
+    if (!nullToAbsent || balance != null) {
+      map['balance'] = Variable<int>(balance);
+    }
     return map;
   }
 
   SyncStateCompanion toCompanion(bool nullToAbsent) {
-    return SyncStateCompanion(id: Value(id), lastSyncedAt: Value(lastSyncedAt));
+    return SyncStateCompanion(
+      id: Value(id),
+      lastSyncedAt: Value(lastSyncedAt),
+      balance: balance == null && nullToAbsent
+          ? const Value.absent()
+          : Value(balance),
+    );
   }
 
   factory SyncStateRow.fromJson(
@@ -697,6 +735,7 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
     return SyncStateRow(
       id: serializer.fromJson<int>(json['id']),
       lastSyncedAt: serializer.fromJson<DateTime>(json['lastSyncedAt']),
+      balance: serializer.fromJson<int?>(json['balance']),
     );
   }
   @override
@@ -705,12 +744,18 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'lastSyncedAt': serializer.toJson<DateTime>(lastSyncedAt),
+      'balance': serializer.toJson<int?>(balance),
     };
   }
 
-  SyncStateRow copyWith({int? id, DateTime? lastSyncedAt}) => SyncStateRow(
+  SyncStateRow copyWith({
+    int? id,
+    DateTime? lastSyncedAt,
+    Value<int?> balance = const Value.absent(),
+  }) => SyncStateRow(
     id: id ?? this.id,
     lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+    balance: balance.present ? balance.value : this.balance,
   );
   SyncStateRow copyWithCompanion(SyncStateCompanion data) {
     return SyncStateRow(
@@ -718,6 +763,7 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
       lastSyncedAt: data.lastSyncedAt.present
           ? data.lastSyncedAt.value
           : this.lastSyncedAt,
+      balance: data.balance.present ? data.balance.value : this.balance,
     );
   }
 
@@ -725,46 +771,58 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
   String toString() {
     return (StringBuffer('SyncStateRow(')
           ..write('id: $id, ')
-          ..write('lastSyncedAt: $lastSyncedAt')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('balance: $balance')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, lastSyncedAt);
+  int get hashCode => Object.hash(id, lastSyncedAt, balance);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is SyncStateRow &&
           other.id == this.id &&
-          other.lastSyncedAt == this.lastSyncedAt);
+          other.lastSyncedAt == this.lastSyncedAt &&
+          other.balance == this.balance);
 }
 
 class SyncStateCompanion extends UpdateCompanion<SyncStateRow> {
   final Value<int> id;
   final Value<DateTime> lastSyncedAt;
+  final Value<int?> balance;
   const SyncStateCompanion({
     this.id = const Value.absent(),
     this.lastSyncedAt = const Value.absent(),
+    this.balance = const Value.absent(),
   });
   SyncStateCompanion.insert({
     this.id = const Value.absent(),
     required DateTime lastSyncedAt,
+    this.balance = const Value.absent(),
   }) : lastSyncedAt = Value(lastSyncedAt);
   static Insertable<SyncStateRow> custom({
     Expression<int>? id,
     Expression<DateTime>? lastSyncedAt,
+    Expression<int>? balance,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (lastSyncedAt != null) 'last_synced_at': lastSyncedAt,
+      if (balance != null) 'balance': balance,
     });
   }
 
-  SyncStateCompanion copyWith({Value<int>? id, Value<DateTime>? lastSyncedAt}) {
+  SyncStateCompanion copyWith({
+    Value<int>? id,
+    Value<DateTime>? lastSyncedAt,
+    Value<int?>? balance,
+  }) {
     return SyncStateCompanion(
       id: id ?? this.id,
       lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+      balance: balance ?? this.balance,
     );
   }
 
@@ -777,6 +835,9 @@ class SyncStateCompanion extends UpdateCompanion<SyncStateRow> {
     if (lastSyncedAt.present) {
       map['last_synced_at'] = Variable<DateTime>(lastSyncedAt.value);
     }
+    if (balance.present) {
+      map['balance'] = Variable<int>(balance.value);
+    }
     return map;
   }
 
@@ -784,7 +845,8 @@ class SyncStateCompanion extends UpdateCompanion<SyncStateRow> {
   String toString() {
     return (StringBuffer('SyncStateCompanion(')
           ..write('id: $id, ')
-          ..write('lastSyncedAt: $lastSyncedAt')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('balance: $balance')
           ..write(')'))
         .toString();
   }
@@ -1095,10 +1157,12 @@ typedef $$TransfersTableProcessedTableManager =
 typedef $$SyncStateTableCreateCompanionBuilder = SyncStateCompanion Function({
   Value<int> id,
   required DateTime lastSyncedAt,
+  Value<int?> balance,
 });
 typedef $$SyncStateTableUpdateCompanionBuilder = SyncStateCompanion Function({
   Value<int> id,
   Value<DateTime> lastSyncedAt,
+  Value<int?> balance,
 });
 
 class $$SyncStateTableFilterComposer
@@ -1117,6 +1181,11 @@ class $$SyncStateTableFilterComposer
 
   ColumnFilters<DateTime> get lastSyncedAt => $composableBuilder(
     column: $table.lastSyncedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get balance => $composableBuilder(
+    column: $table.balance,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -1139,6 +1208,11 @@ class $$SyncStateTableOrderingComposer
     column: $table.lastSyncedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get balance => $composableBuilder(
+    column: $table.balance,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SyncStateTableAnnotationComposer
@@ -1157,6 +1231,9 @@ class $$SyncStateTableAnnotationComposer
     column: $table.lastSyncedAt,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get balance =>
+      $composableBuilder(column: $table.balance, builder: (column) => column);
 }
 
 class $$SyncStateTableTableManager
@@ -1188,14 +1265,26 @@ class $$SyncStateTableTableManager
               $$SyncStateTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
               $$SyncStateTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            Value<DateTime> lastSyncedAt = const Value.absent(),
-          }) => SyncStateCompanion(id: id, lastSyncedAt: lastSyncedAt),
-          createCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            required DateTime lastSyncedAt,
-          }) => SyncStateCompanion.insert(id: id, lastSyncedAt: lastSyncedAt),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<DateTime> lastSyncedAt = const Value.absent(),
+                Value<int?> balance = const Value.absent(),
+              }) => SyncStateCompanion(
+                id: id,
+                lastSyncedAt: lastSyncedAt,
+                balance: balance,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required DateTime lastSyncedAt,
+                Value<int?> balance = const Value.absent(),
+              }) => SyncStateCompanion.insert(
+                id: id,
+                lastSyncedAt: lastSyncedAt,
+                balance: balance,
+              ),
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (

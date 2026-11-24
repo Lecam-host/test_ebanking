@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const { chaos, setChaos, getChaos } = require('./chaos');
 const { registerAuthRoutes, requireAuth, resetAuth } = require('./auth');
 const { registerPushRoutes, notifyStatusChange, resetDevices } = require('./push');
+const { registerAccountRoutes, balanceOf, debit, credit, resetAccounts } = require('./accounts');
 
 const app = express();
 app.use(express.json());
@@ -20,6 +21,7 @@ app.use(chaos);
 // et chaque client ne voit que les siens (req.phone).
 registerAuthRoutes(app);
 registerPushRoutes(app);
+registerAccountRoutes(app);
 app.use('/transfers', requireAuth);
 
 // ---------------------------------------------------------------------------
@@ -89,6 +91,15 @@ app.post('/transfers', (req, res) => {
     return res.status(200).json(toPublic(existing));
   }
 
+  // Règles du compte, pour un NOUVEAU transfert seulement : un rejeu (doublon
+  // reconnu ci-dessus) ne redébite jamais.
+  if (req.body.recipientPhone === req.phone) {
+    return res.status(422).json({ error: 'self_transfer', message: "On ne peut pas s'envoyer de l'argent" });
+  }
+  if (req.body.amount > balanceOf(req.phone)) {
+    return res.status(422).json({ error: 'insufficient_funds', balance: balanceOf(req.phone) });
+  }
+
   const now = new Date().toISOString();
   const transfer = {
     id: `tr_${crypto.randomUUID()}`,
@@ -105,7 +116,10 @@ app.post('/transfers', (req, res) => {
   };
   transfers.set(transfer.id, transfer);
   byIdempotencyKey.set(key, transfer.id);
-  console.log(`  -> transfert créé ${transfer.id}`);
+  // Même bloc sans "await" que la vérification du solde : deux envois
+  // simultanés ne peuvent pas mettre le compte à découvert.
+  debit(req.phone, transfer.amount);
+  console.log(`  -> transfert créé ${transfer.id}, solde ${balanceOf(req.phone)}`);
 
   return res.status(201).json(toPublic(transfer));
 });
@@ -122,7 +136,9 @@ app.get('/transfers', (req, res) => {
     .filter((t) => t.owner === req.phone)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .map(toPublic);
-  return res.json({ items: list, serverTime: new Date().toISOString() });
+  // Le solde voyage avec l'historique : l'app reçoit les deux au même instant,
+  // donc toujours cohérents entre eux.
+  return res.json({ items: list, serverTime: new Date().toISOString(), balance: balanceOf(req.phone) });
 });
 
 app.get('/transfers/:id', (req, res) => {
@@ -152,9 +168,15 @@ const NEXT_STATUS = { SUBMITTED: 'PROCESSING', PROCESSING: 'PAID' };
 app.post('/admin/transfers/:id/advance', (req, res) => {
   const t = transfers.get(req.params.id);
   if (!t) return res.status(404).json({ error: 'not_found' });
+  // Un statut final ne bouge plus : sinon un transfert échoué pourrait être
+  // remboursé deux fois, ou payé après remboursement.
+  if (t.status === 'PAID' || t.status === 'FAILED') {
+    return res.status(409).json({ error: 'final_status', status: t.status });
+  }
   const target = req.body?.status || NEXT_STATUS[t.status];
-  if (!target) return res.status(409).json({ error: 'final_status', status: t.status });
   t.status = target;
+  // L'argent d'un transfert échoué revient sur le compte du client.
+  if (target === 'FAILED') credit(t.owner, t.amount);
   t.updatedAt = new Date().toISOString();
   console.log(`  -> ${t.id} passe à ${t.status}`);
   // Sans attendre : la réponse admin ne dépend pas de FCM.
@@ -179,6 +201,7 @@ app.post('/admin/reset', (_req, res) => {
   byIdempotencyKey.clear();
   resetAuth();
   resetDevices();
+  resetAccounts();
   setChaos({ mode: 'none' });
   return res.json({ ok: true });
 });

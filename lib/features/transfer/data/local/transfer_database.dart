@@ -35,11 +35,16 @@ class Transfers extends Table {
   Set<Column> get primaryKey => {idempotencyKey};
 }
 
-/// Table à une seule ligne : l'heure de la dernière synchronisation réussie.
+/// Table à une seule ligne : l'heure de la dernière synchronisation réussie,
+/// et le solde reçu avec elle.
 @DataClassName('SyncStateRow')
 class SyncState extends Table {
   IntColumn get id => integer()();
   DateTimeColumn get lastSyncedAt => dateTime()();
+
+  /// Ajouté en version 2. Null tant qu'aucune synchro n'a apporté de solde
+  /// (base créée en version 1).
+  IntColumn get balance => integer().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -50,8 +55,19 @@ class TransferDatabase extends _$TransferDatabase {
   /// En test, on passe `NativeDatabase.memory()` : base en mémoire, en clair.
   TransferDatabase(super.executor);
 
+  /// 1 : transferts et date de synchro. 2 : solde.
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  /// Une base déjà installée en version 1 garde ses transferts : on ajoute
+  /// seulement la colonne. Une nouvelle base est créée directement en
+  /// version 2 (création par défaut de Drift).
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: (migrator, from, to) async {
+      if (from < 2) await migrator.addColumn(syncState, syncState.balance);
+    },
+  );
 }
 
 /// Ouvre la base chiffrée du téléphone.

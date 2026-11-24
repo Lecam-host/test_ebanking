@@ -40,11 +40,11 @@ class TransferApi {
     }
   }
 
-  /// Les transferts du serveur, du plus récent au plus ancien.
-  Future<List<Map<String, dynamic>>> fetchTransfers() async {
+  /// `{ items, serverTime, balance }` : les transferts du serveur, du plus
+  /// récent au plus ancien, et le solde du client.
+  Future<Map<String, dynamic>> fetchHistory() async {
     final response = await _dio.get<Map<String, dynamic>>('/transfers');
-    final items = response.data!['items'] as List<dynamic>;
-    return items.cast<Map<String, dynamic>>();
+    return response.data!;
   }
 
   Future<Map<String, dynamic>> getTransfer(String serverId) async {

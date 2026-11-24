@@ -26,14 +26,17 @@ class FakeSendTransfer implements SendTransfer {
 
   final keys = <String>[];
   final requests = <TransferRequest>[];
+  final senders = <String>[];
 
   @override
   Future<Result<Transfer>> call(
     TransferRequest request,
-    String idempotencyKey,
-  ) {
+    String idempotencyKey, {
+    required String senderPhone,
+  }) {
     keys.add(idempotencyKey);
     requests.add(request);
+    senders.add(senderPhone);
     return respond(request, idempotencyKey);
   }
 }

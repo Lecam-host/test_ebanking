@@ -64,7 +64,13 @@ test/                       même arborescence que lib/
 - **Clé de la base** : 32 octets aléatoires créés au premier lancement, gardés dans
   `flutter_secure_storage`, passés en clé brute (`PRAGMA key = "x'...'"`, sans dérivation lente).
   Une table `transfers` (outbox + cache, clé primaire `idempotencyKey`) et une table `sync_state`
-  d'une ligne. Dates stockées en secondes Unix (défaut Drift).
+  d'une ligne (date de synchro et solde). Dates stockées en secondes Unix (défaut Drift).
+  Schéma version 2 : la migration depuis la version 1 ajoute la colonne `balance`.
+- **Solde** : tenu par le serveur seul (`mock_server/accounts.js`, 1 000 000 FCFA à l'ouverture
+  du compte), débité à la création d'un transfert, jamais au rejeu ; remboursé si FAILED. Il
+  arrive avec l'historique (`GET /transfers`) : l'app affiche le dernier solde connu, avec
+  l'heure de sa mise à jour, et ne bloque jamais un envoi sur ce solde, qui peut être périmé.
+  `SendTransfer` reçoit `senderPhone` et refuse l'envoi à son propre numéro.
 - **Erreurs Dio** : dans le doute (coupure, erreur inconnue), `NetworkFailure`, donc résultat
   inconnu, jamais un refus. Seul un 4xx (sauf 401) donne `RejectedFailure`.
 - **Tests d'intégration** : tag `integration`, ignorés par défaut via `skip` dans `dart_test.yaml`.
@@ -91,8 +97,9 @@ test/                       même arborescence que lib/
   (`overrides` du `ProviderScope`), les tests y branchent des faux.
 - **Formulaire d'envoi** : `SendTransferNotifier` sans autoDispose (quitter l'écran ne crée pas
   de nouvelle clé) ; une clé par formulaire, figé dès qu'un transfert est enregistré.
-- **Reprise automatique** (`AutoResume`) : au démarrage, au retour du réseau, puis toutes les
-  30 s tant qu'un transfert est incertain ; un seul passage à la fois.
+- **Reprise automatique** (`AutoResume`) : au démarrage, au retour du réseau, après un envoi
+  accepté (pour le solde), puis toutes les 30 s tant qu'un transfert est incertain ; un seul
+  passage à la fois.
 - **URL de l'API** : `--dart-define=API_BASE_URL=...` (`lib/core/config.dart`), par défaut
   `http://10.0.2.2:3000` (la machine hôte vue depuis l'émulateur Android). HTTP en clair est
   autorisé seulement dans `android/app/src/debug/AndroidManifest.xml`.
@@ -106,7 +113,8 @@ envoyé au serveur dans l'en-tête `Idempotency-Key`.
    appui), réutilisée pour « Réessayer » et pour toutes les reprises. Nouvelle clé seulement
    pour un nouveau transfert. Une reprise ne génère **jamais** de nouvelle clé. Le domaine
    n'en fabrique jamais : `SendTransfer` la reçoit de l'appelant.
-2. **Saisie invalide** → `ValidationFailure` : rien n'est écrit, aucun appel réseau.
+2. **Saisie invalide** (ou envoi à son propre numéro) → `ValidationFailure` : rien n'est écrit,
+   aucun appel réseau.
 3. **Clé déjà connue localement** → pas de deuxième transfert. S'il est encore à réconcilier,
    on relance sa réconciliation ; sinon on renvoie son état.
 4. **Écrire avant d'appeler.** Le transfert est enregistré en `pendingSubmission` AVANT tout
@@ -166,13 +174,14 @@ Les routes `/transfers` exigent `Authorization: Bearer <jeton d'accès>` (401 `u
 | `POST /admin/sessions/revoke` `{ phone }` | révoque les sessions d'un numéro (démo « téléphone volé ») |
 | `POST /devices` `{ fid }` (jeton requis) | 204 : téléphone inscrit aux notifications de sa session |
 | `GET /admin/transfers` | tous les transferts (pour `advance.sh`) |
-| `POST /transfers` + en-tête `Idempotency-Key` | 201 créé ; 200 doublon reconnu (le transfert existant est renvoyé) ; 400 `idempotency_key_required` ; 422 `validation_error` (avec `details`) ; 422 `idempotency_key_reused` |
-| `GET /transfers` | 200 `{ items: [...], serverTime }`, du plus récent au plus ancien |
+| `POST /transfers` + en-tête `Idempotency-Key` | 201 créé (montant débité) ; 200 doublon reconnu (le transfert existant est renvoyé, rien n'est redébité) ; 400 `idempotency_key_required` ; 422 `validation_error` (avec `details`) ; 422 `idempotency_key_reused` ; 422 `self_transfer` ; 422 `insufficient_funds` (avec `balance`) |
+| `GET /transfers` | 200 `{ items: [...], serverTime, balance }`, du plus récent au plus ancien |
 | `GET /transfers?idempotencyKey=K` | 200 transfert ; 404 `not_found` si la clé est inconnue |
 | `GET /transfers/:id` | 200 transfert ; 404 `not_found` |
-| `POST /admin/reset` | vide tout et remet le chaos à `none` |
+| `POST /admin/reset` | vide tout (les comptes repartent à 1 000 000 FCFA) et remet le chaos à `none` |
 | `GET` / `POST /admin/chaos` | lit / règle `{ mode, count?, slowMs? }` |
-| `POST /admin/transfers/:id/advance` | SUBMITTED → PROCESSING → PAID, ou `{ status }` imposé ; envoie la notification FCM (`mock_server/push.js`, API HTTP v1, cible `fid`) |
+| `POST /admin/transfers/:id/advance` | SUBMITTED → PROCESSING → PAID, ou `{ status }` imposé ; FAILED rembourse ; 409 `final_status` sur PAID ou FAILED ; envoie la notification FCM (`mock_server/push.js`, API HTTP v1, cible `fid`) |
+| `POST /admin/accounts/credit` `{ phone, amount }` | recrédite un compte (démo) ; 200 `{ phone, balance }` |
 
 Modes de chaos (jamais appliqués aux routes `/admin`) : `none` ; `random` (latence 0,5–3 s,
 10 % d'erreurs 500, 5 % de coupures) ; `slow` (traité, réponse après 30 s) ; `hang` (traité,
@@ -188,6 +197,8 @@ suivant). Au-delà, une reprise qui reçoit 404 recréerait le transfert.
 flutter analyze
 flutter test                      # tests unitaires et de widgets
 flutter test --tags integration --run-skipped   # tests d'intégration (serveur simulé sur localhost:3000)
+# Ils remettent le serveur à zéro : pour garder celui de la démo, en lancer un autre
+# (PORT=3100 npm start) et le viser avec MOCK_SERVER_URL=http://localhost:3100.
 dart run build_runner build       # régénère le code Drift (*.g.dart, commité) après un changement de table
 cd mock_server && npm start       # serveur simulé (npm install la première fois)
 cd mock_server && ./try.sh        # vérification manuelle de l'idempotence et des pannes

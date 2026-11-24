@@ -31,6 +31,17 @@ void main() {
     expect(transfer.updatedAt, DateTime.utc(2026, 11, 23, 10, 0, 5));
   });
 
+  test('réponse de GET /transfers → transferts et solde', () {
+    final statement = accountStatementFromJson({
+      'items': [serverJson],
+      'serverTime': '2026-11-23T10:01:00.000Z',
+      'balance': 975000,
+    });
+
+    expect(statement.transfers.single.serverId, 'tr_123');
+    expect(statement.balance, 975000);
+  });
+
   test('statuts serveur → TransferStatus', () {
     expect(transferStatusFromServer('SUBMITTED'), TransferStatus.submitted);
     expect(transferStatusFromServer('PROCESSING'), TransferStatus.processing);

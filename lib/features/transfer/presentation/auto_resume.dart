@@ -1,8 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:test_ebanking/core/result.dart';
 import 'package:test_ebanking/features/auth/presentation/auth_notifier.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer_history.dart';
+import 'package:test_ebanking/features/transfer/presentation/send_transfer_notifier.dart';
 import 'package:test_ebanking/features/transfer/presentation/transfer_providers.dart';
 
 /// Relance la réconciliation des transferts incertains.
@@ -68,6 +70,17 @@ final autoResumeProvider = Provider<AutoResume>((ref) {
     final history = next.value;
     if (history != null) autoResume.onHistoryChanged(history);
   }, fireImmediately: true);
+
+  // 4. Après un envoi accepté par le serveur : le solde affiché se met à jour
+  //    tout de suite, sans attendre un autre déclencheur.
+  ref.listen(sendTransferNotifierProvider.select((form) => form.result), (
+    _,
+    result,
+  ) {
+    if (result case Ok(:final value) when !value.status.needsReconciliation) {
+      autoResume.run();
+    }
+  });
 
   return autoResume;
 });

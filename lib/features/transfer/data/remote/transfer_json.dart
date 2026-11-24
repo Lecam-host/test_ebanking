@@ -1,3 +1,4 @@
+import 'package:test_ebanking/features/transfer/domain/entities/account_statement.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer_request.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer_status.dart';
@@ -10,6 +11,17 @@ Map<String, dynamic> transferRequestToJson(TransferRequest request) => {
   'recipientPhone': request.recipientPhone,
   'recipientName': request.recipientName,
 };
+
+/// Réponse de `GET /transfers` : `{ items, serverTime, balance }`. Un solde
+/// absent est un contrat rompu : l'exception remonte, le cache reste tel quel.
+AccountStatement accountStatementFromJson(Map<String, dynamic> json) =>
+    AccountStatement(
+      transfers: (json['items'] as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .map(transferFromJson)
+          .toList(),
+      balance: json['balance'] as int,
+    );
 
 /// Transfert tel que le serveur le renvoie.
 Transfer transferFromJson(Map<String, dynamic> json) => Transfer(

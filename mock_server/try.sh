@@ -37,5 +37,15 @@ curl -s -X POST "$URL/admin/chaos" -H "$H" -d '{"mode":"slow","count":1}' >/dev/
 curl -s -m 5 -X POST "$URL/transfers" -H "$H" -H "$A" -H "Idempotency-Key: $KEY-d" -d "$B"; echo "(curl exit $?, attendu 28)"
 curl -s -w ' [%{http_code}]\n' "$URL/transfers?idempotencyKey=$KEY-d" -H "$A"
 
+echo "== 5. Envoi à son propre numéro : 422 self_transfer"
+curl -s -w ' [%{http_code}]\n' -X POST "$URL/transfers" -H "$H" -H "$A" -H "Idempotency-Key: $KEY-e" \
+  -d "{\"amount\":1000,\"currency\":\"XOF\",\"recipientPhone\":\"$PHONE\",\"recipientName\":\"Moi\"}"
+
+echo "== 6. Montant au-dessus du solde : 422 insufficient_funds"
+curl -s -w ' [%{http_code}]\n' -X POST "$URL/transfers" -H "$H" -H "$A" -H "Idempotency-Key: $KEY-f" \
+  -d '{"amount":2000000,"currency":"XOF","recipientPhone":"0701020304","recipientName":"Awa Kone"}'
+
 echo "== Total : attendu 3 transferts (a, b, d)"
 curl -s "$URL/transfers" -H "$A" | grep -o '"id":"tr_' | wc -l
+echo "== Solde : attendu 925000 (1 000 000 - 3 x 25 000, chaque transfert débité une seule fois)"
+curl -s "$URL/transfers" -H "$A" | sed -E 's/.*"balance":([0-9]+).*/\1/'; echo

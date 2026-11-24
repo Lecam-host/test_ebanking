@@ -17,27 +17,7 @@ Transfer transfer(int amount, TransferStatus status, DateTime createdAt) =>
     );
 
 void main() {
-  final now = DateTime(2026, 11, 24, 12);
   final thisMonth = DateTime(2026, 11, 2);
-
-  test(
-    'envoyé ce mois-ci : seuls les transferts acceptés du mois comptent',
-    () {
-      final transfers = [
-        transfer(50000, TransferStatus.paid, thisMonth),
-        transfer(20000, TransferStatus.submitted, thisMonth),
-        transfer(5000, TransferStatus.processing, thisMonth),
-        // Peut-être pas parti, ou rien envoyé : exclus.
-        transfer(7000, TransferStatus.unknownOutcome, thisMonth),
-        transfer(3000, TransferStatus.rejected, thisMonth),
-        transfer(2000, TransferStatus.failed, thisMonth),
-        // Mois précédent : exclu.
-        transfer(90000, TransferStatus.paid, DateTime(2026, 10, 31)),
-      ];
-
-      expect(amountSentThisMonth(transfers, now), 75000);
-    },
-  );
 
   test('pastille : transferts encore en vérification', () {
     expect(

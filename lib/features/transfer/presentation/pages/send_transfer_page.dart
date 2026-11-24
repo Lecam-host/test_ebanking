@@ -8,6 +8,7 @@ import 'package:test_ebanking/features/auth/presentation/pages/pin_pages.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer_request.dart';
 import 'package:test_ebanking/features/transfer/presentation/formatters.dart';
 import 'package:test_ebanking/features/transfer/presentation/send_transfer_notifier.dart';
+import 'package:test_ebanking/features/transfer/presentation/transfer_providers.dart';
 
 /// Formulaire d'envoi. La validation n'est faite qu'une fois, dans le domaine
 /// (SendTransfer) : l'écran affiche ses messages au lieu de la dupliquer.
@@ -75,6 +76,8 @@ class _SendTransferPageState extends ConsumerState<SendTransferPage> {
     final notifier = ref.read(sendTransferNotifierProvider.notifier);
     final editable = !form.isLocked && !form.isSending;
     final message = _message(form);
+    // Dernier solde connu, pour information : le serveur vérifie le vrai.
+    final balance = ref.watch(historyProvider).value?.balance;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Nouveau transfert')),
@@ -101,7 +104,12 @@ class _SendTransferPageState extends ConsumerState<SendTransferPage> {
             enabled: editable,
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: const InputDecoration(labelText: 'Montant (FCFA)'),
+            decoration: InputDecoration(
+              labelText: 'Montant (FCFA)',
+              helperText: balance == null
+                  ? null
+                  : 'Solde disponible : ${formatAmount(balance)}',
+            ),
           ),
           if (!form.isLocked) ...[
             PinField(
@@ -151,6 +159,10 @@ class _SendTransferPageState extends ConsumerState<SendTransferPage> {
           'L\'app vérifie toute seule ; rien ne partira deux fois.',
     Ok(:final value) => 'Transfert ${statusLabel(value.status).toLowerCase()}.',
     Err(failure: ValidationFailure(:final errors)) => errors.join('\n'),
+    Err(failure: RejectedFailure(code: 'insufficient_funds')) =>
+      'Solde insuffisant : transfert refusé, rien n\'a été débité.',
+    Err(failure: RejectedFailure(code: 'self_transfer')) =>
+      'Vous ne pouvez pas vous envoyer de l\'argent.',
     Err(failure: RejectedFailure(:final code)) =>
       'Transfert refusé par le serveur ($code).',
     Err(failure: UnauthorizedFailure()) =>

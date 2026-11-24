@@ -1,4 +1,5 @@
 import 'package:test_ebanking/core/result.dart';
+import 'package:test_ebanking/features/transfer/domain/entities/account_statement.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer_request.dart';
 
@@ -14,8 +15,8 @@ abstract interface class TransferRepository {
   /// `Ok(null)` si le serveur ne connaît pas la clé : le transfert n'a pas été créé.
   Future<Result<Transfer?>> findByIdempotencyKey(String idempotencyKey);
 
-  /// Tous les transferts, du plus récent au plus ancien.
-  Future<Result<List<Transfer>>> fetchHistory();
+  /// Tous les transferts (du plus récent au plus ancien) et le solde.
+  Future<Result<AccountStatement>> fetchHistory();
 
   Future<Result<Transfer>> getById(String serverId);
 }

@@ -3,6 +3,7 @@ import 'package:test_ebanking/core/result.dart';
 import 'package:test_ebanking/core/data/dio_failure.dart';
 import 'package:test_ebanking/features/transfer/data/remote/transfer_api.dart';
 import 'package:test_ebanking/features/transfer/data/remote/transfer_json.dart';
+import 'package:test_ebanking/features/transfer/domain/entities/account_statement.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer_request.dart';
 import 'package:test_ebanking/features/transfer/domain/ports/transfer_repository.dart';
@@ -32,10 +33,8 @@ class TransferRepositoryImpl implements TransferRepository {
       });
 
   @override
-  Future<Result<List<Transfer>>> fetchHistory() => _guard(() async {
-    final items = await _api.fetchTransfers();
-    return items.map(transferFromJson).toList();
-  });
+  Future<Result<AccountStatement>> fetchHistory() =>
+      _guard(() async => accountStatementFromJson(await _api.fetchHistory()));
 
   @override
   Future<Result<Transfer>> getById(String serverId) =>

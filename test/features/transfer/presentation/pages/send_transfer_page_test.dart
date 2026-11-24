@@ -7,6 +7,7 @@ import 'package:test_ebanking/core/result.dart';
 import 'package:test_ebanking/features/auth/presentation/auth_notifier.dart';
 import 'package:test_ebanking/features/auth/presentation/auth_providers.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer.dart';
+import 'package:test_ebanking/features/transfer/domain/entities/transfer_history.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer_status.dart';
 import 'package:test_ebanking/features/transfer/presentation/pages/send_transfer_page.dart';
 import 'package:test_ebanking/features/transfer/presentation/transfer_providers.dart';
@@ -30,10 +31,24 @@ void main() {
           authNotifierProvider.overrideWith(
             () => FixedAuthNotifier(AuthStatus.unlocked),
           ),
+          currentPhoneProvider.overrideWithValue('0700000001'),
+          historyProvider.overrideWith(
+            (ref) => Stream.value(
+              TransferHistory(
+                transfers: const [],
+                lastSyncedAt: t0,
+                balance: 1000000,
+              ),
+            ),
+          ),
         ],
         child: const MaterialApp(home: SendTransferPage()),
       ),
     );
+    await tester.pump(); // l'historique (et son solde) arrive
+    // Le dernier solde connu est rappelé sous le montant.
+    expect(find.textContaining('Solde disponible'), findsOneWidget);
+
     await tester.enterText(
       find.widgetWithText(TextField, 'Nom du bénéficiaire'),
       'Awa Kone',
