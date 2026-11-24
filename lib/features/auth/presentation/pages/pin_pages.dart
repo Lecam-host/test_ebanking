@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:test_ebanking/core/failure.dart';
+import 'package:test_ebanking/core/presentation/app_colors.dart';
+import 'package:test_ebanking/core/presentation/sheet_scaffold.dart';
 import 'package:test_ebanking/core/result.dart';
 import 'package:test_ebanking/features/auth/domain/entities/pin_check.dart';
 import 'package:test_ebanking/features/auth/presentation/auth_notifier.dart';
+import 'package:test_ebanking/features/auth/presentation/widgets/welcome_illustration.dart';
 
 /// Champ de code secret : 4 chiffres masqués.
 class PinField extends StatelessWidget {
@@ -13,11 +16,13 @@ class PinField extends StatelessWidget {
     required this.controller,
     required this.label,
     this.enabled = true,
+    this.onChanged,
   });
 
   final TextEditingController controller;
   final String label;
   final bool enabled;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) => TextField(
@@ -27,9 +32,17 @@ class PinField extends StatelessWidget {
     keyboardType: TextInputType.number,
     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
     maxLength: 4,
-    decoration: InputDecoration(labelText: label),
+    onChanged: onChanged,
+    decoration: InputDecoration(hintText: label, counterText: ''),
   );
 }
+
+Widget _errorText(String? message) => message == null
+    ? const SizedBox.shrink()
+    : Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: Text(message, style: const TextStyle(color: AppColors.red)),
+      );
 
 /// Création du code secret, juste après la première connexion.
 class CreatePinPage extends ConsumerStatefulWidget {
@@ -69,21 +82,34 @@ class _CreatePinPageState extends ConsumerState<CreatePinPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Code secret')),
-    body: ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        const Text(
-          'Choisissez un code secret de 4 chiffres. Il sera demandé à '
-          'l\'ouverture de l\'app et à chaque envoi.',
-        ),
-        PinField(controller: _pin, label: 'Code secret'),
-        PinField(controller: _confirmation, label: 'Confirmation'),
-        if (_error != null) Text(_error!),
-        FilledButton(onPressed: _create, child: const Text('Valider')),
-      ],
-    ),
+  Widget build(BuildContext context) => SheetScaffold(
+    title: 'Code secret',
+    headline: 'Votre code secret,',
+    subtitle: '4 chiffres, demandés à l\'ouverture de l\'app et à chaque envoi',
+    children: [
+      const SizedBox(height: 24),
+      const WelcomeIllustration(),
+      const SizedBox(height: 32),
+      PinField(
+        controller: _pin,
+        label: 'Code secret',
+        onChanged: (_) => setState(() {}),
+      ),
+      const SizedBox(height: 20),
+      PinField(
+        controller: _confirmation,
+        label: 'Confirmation',
+        onChanged: (_) => setState(() {}),
+      ),
+      _errorText(_error),
+      const SizedBox(height: 36),
+      FilledButton(
+        onPressed: _pin.text.isEmpty || _confirmation.text.isEmpty
+            ? null
+            : _create,
+        child: const Text('Valider'),
+      ),
+    ],
   );
 }
 
@@ -122,20 +148,40 @@ class _UnlockPageState extends ConsumerState<UnlockPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Déverrouiller')),
-    body: ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        PinField(controller: _pin, label: 'Code secret'),
-        if (_error != null) Text(_error!),
-        FilledButton(onPressed: _unlock, child: const Text('Déverrouiller')),
-        TextButton(
-          // Code oublié : on repart d'une connexion par SMS, tout est effacé.
-          onPressed: () => ref.read(authNotifierProvider.notifier).signOut(),
-          child: const Text('Code oublié ? Se déconnecter'),
-        ),
-      ],
-    ),
+  Widget build(BuildContext context) => SheetScaffold(
+    title: 'Déverrouiller',
+    headline: 'Bon retour,',
+    subtitle: 'Entrez votre code secret pour continuer',
+    children: [
+      const SizedBox(height: 24),
+      const WelcomeIllustration(),
+      const SizedBox(height: 32),
+      PinField(
+        controller: _pin,
+        label: 'Code secret',
+        onChanged: (_) => setState(() {}),
+      ),
+      _errorText(_error),
+      const SizedBox(height: 36),
+      FilledButton(
+        onPressed: _pin.text.isEmpty ? null : _unlock,
+        child: const Text('Déverrouiller'),
+      ),
+      const SizedBox(height: 24),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text(
+            'Code oublié ?',
+            style: TextStyle(color: AppColors.text, fontSize: 12),
+          ),
+          TextButton(
+            // On repart d'une connexion par SMS : tout est effacé.
+            onPressed: () => ref.read(authNotifierProvider.notifier).signOut(),
+            child: const Text('Se déconnecter'),
+          ),
+        ],
+      ),
+    ],
   );
 }

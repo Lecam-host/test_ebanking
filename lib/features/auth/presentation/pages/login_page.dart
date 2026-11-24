@@ -2,11 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:test_ebanking/core/failure.dart';
+import 'package:test_ebanking/core/presentation/app_colors.dart';
+import 'package:test_ebanking/core/presentation/sheet_scaffold.dart';
 import 'package:test_ebanking/core/result.dart';
 import 'package:test_ebanking/features/auth/presentation/auth_notifier.dart';
+import 'package:test_ebanking/features/auth/presentation/widgets/welcome_illustration.dart';
 
 /// Connexion : numéro de téléphone, puis code reçu par SMS. Une seule fois par
 /// téléphone ; ensuite, le code secret suffit.
+///
+/// Écran « Sign up » du kit Figma, adapté à ce parcours : pas de mot de passe
+/// ni de nom, mais le numéro puis le code SMS.
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
@@ -27,6 +33,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     _code.dispose();
     super.dispose();
   }
+
+  /// Comme sur la maquette, le bouton reste grisé tant que le champ est vide.
+  /// Le format, lui, n'est vérifié qu'à un seul endroit : le domaine.
+  bool get _canSubmit =>
+      !_busy && (_codeSent ? _code.text.isNotEmpty : _phone.text.isNotEmpty);
 
   Future<void> _run(Future<Result<void>> Function() action) async {
     setState(() {
@@ -64,49 +75,83 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final message = ref.watch(authNotifierProvider).message;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Connexion')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          if (message != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Text(message),
+    return SheetScaffold(
+      title: 'Connexion',
+      headline: 'Bienvenue,',
+      subtitle: 'Connectez-vous avec votre numéro de téléphone',
+      children: [
+        if (message != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child: Text(message, style: const TextStyle(color: AppColors.red)),
+          ),
+        const SizedBox(height: 24),
+        const WelcomeIllustration(),
+        const SizedBox(height: 32),
+        TextField(
+          controller: _phone,
+          enabled: !_codeSent && !_busy,
+          keyboardType: TextInputType.phone,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          maxLength: 10,
+          onChanged: (_) => setState(() {}),
+          decoration: const InputDecoration(
+            hintText: 'Numéro de téléphone',
+            // Indicatif toujours visible, comme le « (+84) » de la maquette ;
+            // le numéro saisi reste le format national à 10 chiffres.
+            prefixIcon: Padding(
+              padding: EdgeInsets.only(left: 12, right: 6),
+              child: Text(
+                '(+225)',
+                style: TextStyle(color: AppColors.text, fontSize: 14),
+              ),
             ),
+            prefixIconConstraints: BoxConstraints(),
+            counterText: '',
+          ),
+        ),
+        if (_codeSent) ...[
+          const SizedBox(height: 20),
           TextField(
-            controller: _phone,
-            enabled: !_codeSent && !_busy,
-            keyboardType: TextInputType.phone,
+            controller: _code,
+            enabled: !_busy,
+            keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            maxLength: 10,
-            decoration: const InputDecoration(labelText: 'Numéro de téléphone'),
+            maxLength: 6,
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(
+              hintText: 'Code reçu par SMS',
+              counterText: '',
+            ),
           ),
-          if (_codeSent)
-            TextField(
-              controller: _code,
-              enabled: !_busy,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              maxLength: 6,
-              decoration: const InputDecoration(labelText: 'Code reçu par SMS'),
-            ),
-          if (_error != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text(_error!),
-            ),
-          FilledButton(
-            onPressed: _busy ? null : (_codeSent ? _signIn : _requestCode),
-            child: Text(_codeSent ? 'Se connecter' : 'Recevoir le code'),
-          ),
-          if (_codeSent)
-            TextButton(
-              onPressed: _busy ? null : _requestCode,
-              child: const Text('Renvoyer le code'),
-            ),
         ],
-      ),
+        if (_error != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Text(_error!, style: const TextStyle(color: AppColors.red)),
+          ),
+        const SizedBox(height: 36),
+        FilledButton(
+          onPressed: _canSubmit ? (_codeSent ? _signIn : _requestCode) : null,
+          child: Text(_codeSent ? 'Se connecter' : 'Recevoir le code'),
+        ),
+        if (_codeSent) ...[
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'Code non reçu ?',
+                style: TextStyle(color: AppColors.text, fontSize: 12),
+              ),
+              TextButton(
+                onPressed: _busy ? null : _requestCode,
+                child: const Text('Renvoyer'),
+              ),
+            ],
+          ),
+        ],
+      ],
     );
   }
 }

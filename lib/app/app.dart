@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:test_ebanking/app/router.dart';
+import 'package:test_ebanking/core/presentation/app_theme.dart';
 import 'package:test_ebanking/features/auth/presentation/auth_notifier.dart';
 import 'package:test_ebanking/features/push/domain/entities/push_message.dart';
 import 'package:test_ebanking/features/push/presentation/push_activation.dart';
@@ -84,6 +85,7 @@ class _AppState extends ConsumerState<App> {
     ref.watch(pushActivationProvider);
     return MaterialApp.router(
       title: 'test_ebanking',
+      theme: buildAppTheme(),
       scaffoldMessengerKey: _messenger,
       routerConfig: ref.watch(routerProvider),
     );

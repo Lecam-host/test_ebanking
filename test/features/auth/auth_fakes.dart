@@ -139,6 +139,14 @@ class FixedAuthNotifier extends AuthNotifier {
 
   void set(AuthStatus status) => state = AuthState(status);
 
+  final otpRequests = <String>[];
+
+  @override
+  Future<Result<void>> requestOtp(String phone) async {
+    otpRequests.add(phone);
+    return const Ok(null);
+  }
+
   @override
   Future<void> signOut({String? message}) async {
     signOutMessages.add(message);
