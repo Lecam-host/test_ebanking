@@ -10,10 +10,13 @@ void main() {
     ]);
   });
 
-  test('needsReconciliation : pendingSubmission et unknownOutcome seulement', () {
-    expect(
-      TransferStatus.values.where((status) => status.needsReconciliation),
-      [TransferStatus.pendingSubmission, TransferStatus.unknownOutcome],
-    );
-  });
+  test(
+    'needsReconciliation : pendingSubmission et unknownOutcome seulement',
+    () {
+      expect(
+        TransferStatus.values.where((status) => status.needsReconciliation),
+        [TransferStatus.pendingSubmission, TransferStatus.unknownOutcome],
+      );
+    },
+  );
 }

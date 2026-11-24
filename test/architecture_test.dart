@@ -88,7 +88,8 @@ void main() {
 
   group('le détecteur', () {
     const domainFile = 'lib/features/transfer/domain/send_transfer.dart';
-    const presentationFile = 'lib/features/transfer/presentation/send_page.dart';
+    const presentationFile =
+        'lib/features/transfer/presentation/send_page.dart';
 
     List<String> check(String path, String uri) =>
         dependencyViolations(path, "import '$uri';");
@@ -105,17 +106,20 @@ void main() {
       }
     });
 
-    test('refuse data/ et presentation/ dans domain/, en relatif ou en package:', () {
-      for (final uri in [
-        '../data/transfer_api.dart',
-        '../presentation/send_page.dart',
-        '../../auth/data/session_store_impl.dart',
-        'package:test_ebanking/features/transfer/data/transfer_api.dart',
-        'package:test_ebanking/features/transfer/presentation/send_page.dart',
-      ]) {
-        expect(check(domainFile, uri), isNotEmpty, reason: uri);
-      }
-    });
+    test(
+      'refuse data/ et presentation/ dans domain/, en relatif ou en package:',
+      () {
+        for (final uri in [
+          '../data/transfer_api.dart',
+          '../presentation/send_page.dart',
+          '../../auth/data/session_store_impl.dart',
+          'package:test_ebanking/features/transfer/data/transfer_api.dart',
+          'package:test_ebanking/features/transfer/presentation/send_page.dart',
+        ]) {
+          expect(check(domainFile, uri), isNotEmpty, reason: uri);
+        }
+      },
+    );
 
     test('accepte dart:, core/ et le domaine dans domain/', () {
       for (final uri in [

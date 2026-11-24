@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:test_ebanking/core/result.dart';
+import 'package:test_ebanking/features/auth/presentation/auth_notifier.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer_history.dart';
 import 'package:test_ebanking/features/transfer/presentation/formatters.dart';
 import 'package:test_ebanking/features/transfer/presentation/transfer_providers.dart';
@@ -18,7 +19,16 @@ class HistoryPage extends ConsumerWidget {
     final isOnline = ref.watch(isOnlineProvider).value ?? true;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Historique')),
+      appBar: AppBar(
+        title: const Text('Historique'),
+        actions: [
+          IconButton(
+            tooltip: 'Se déconnecter',
+            icon: const Icon(Icons.logout),
+            onPressed: () => _confirmSignOut(context, ref),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/send'),
         icon: const Icon(Icons.send),
@@ -39,6 +49,32 @@ class HistoryPage extends ConsumerWidget {
         ],
       ),
     );
+  }
+}
+
+Future<void> _confirmSignOut(BuildContext context, WidgetRef ref) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Se déconnecter ?'),
+      content: const Text(
+        'L\'historique et le code secret seront effacés de ce téléphone. '
+        'Il faudra un nouveau code SMS pour revenir.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Annuler'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Se déconnecter'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed == true) {
+    await ref.read(authNotifierProvider.notifier).signOut();
   }
 }
 

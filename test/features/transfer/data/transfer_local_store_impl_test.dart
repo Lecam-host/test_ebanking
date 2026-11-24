@@ -73,6 +73,18 @@ void main() {
     expect(saved.serverId, 'tr_1');
   });
 
+  test('clear efface tous les transferts et la date de synchro '
+      '(déconnexion)', () async {
+    await store.save(transfer('k1', TransferStatus.paid));
+    await store.saveSyncedHistory(const [], DateTime(2026, 11, 23, 12));
+
+    await store.clear();
+
+    final history = await store.watchHistory().first;
+    expect(history.transfers, isEmpty);
+    expect(history.lastSyncedAt, isNull);
+  });
+
   test('findNeedingReconciliation : statuts incertains seulement, du plus '
       'ancien au plus récent', () async {
     await store.save(

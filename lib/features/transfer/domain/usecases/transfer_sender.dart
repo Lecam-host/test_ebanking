@@ -38,7 +38,9 @@ class TransferSender {
     switch (result) {
       case Ok(value: final fromServer):
         return _save(fromServer);
-      case Err(failure: NetworkFailure() || TimeoutFailure() || ServerFailure()):
+      case Err(
+        failure: NetworkFailure() || TimeoutFailure() || ServerFailure(),
+      ):
         // Pas de réponse, ou 5xx : le serveur a peut-être créé le transfert.
         return _save(_withStatus(transfer, TransferStatus.unknownOutcome));
       case Err(failure: final RejectedFailure failure):

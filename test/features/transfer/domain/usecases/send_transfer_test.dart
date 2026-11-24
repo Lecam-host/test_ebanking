@@ -27,11 +27,8 @@ void main() {
     );
   });
 
-  Matcher okWithStatus(TransferStatus status) => isA<Ok<Transfer>>().having(
-    (ok) => ok.value.status,
-    'status',
-    status,
-  );
+  Matcher okWithStatus(TransferStatus status) =>
+      isA<Ok<Transfer>>().having((ok) => ok.value.status, 'status', status);
 
   test('1. enregistre pendingSubmission AVANT l\'appel réseau', () async {
     final result = await sendTransfer(validRequest, 'k1');
@@ -83,7 +80,11 @@ void main() {
       isA<Err<Transfer>>().having(
         (err) => err.failure,
         'failure',
-        isA<RejectedFailure>().having((f) => f.code, 'code', 'validation_error'),
+        isA<RejectedFailure>().having(
+          (f) => f.code,
+          'code',
+          'validation_error',
+        ),
       ),
     );
     expect(store.byKey['k1']!.status, TransferStatus.rejected);

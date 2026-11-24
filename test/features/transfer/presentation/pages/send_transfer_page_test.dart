@@ -4,11 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:test_ebanking/core/result.dart';
+import 'package:test_ebanking/features/auth/presentation/auth_notifier.dart';
+import 'package:test_ebanking/features/auth/presentation/auth_providers.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer_status.dart';
 import 'package:test_ebanking/features/transfer/presentation/pages/send_transfer_page.dart';
 import 'package:test_ebanking/features/transfer/presentation/transfer_providers.dart';
 
+import '../../../auth/auth_fakes.dart';
 import '../../domain/fakes.dart';
 import '../presentation_fakes.dart';
 
@@ -23,6 +26,10 @@ void main() {
         overrides: [
           sendTransferProvider.overrideWithValue(sendTransfer),
           idGeneratorProvider.overrideWithValue(SequentialIdGenerator()),
+          pinLockProvider.overrideWithValue(FakePinLock()),
+          authNotifierProvider.overrideWith(
+            () => FixedAuthNotifier(AuthStatus.unlocked),
+          ),
         ],
         child: const MaterialApp(home: SendTransferPage()),
       ),
@@ -38,6 +45,10 @@ void main() {
     await tester.enterText(
       find.widgetWithText(TextField, 'Montant (FCFA)'),
       '25000',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Code secret'),
+      '1234',
     );
 
     // Deux appuis avant que l'écran ait eu le temps de se redessiner.

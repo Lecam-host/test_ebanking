@@ -49,18 +49,21 @@ void main() {
     expect(statusOf('k1'), TransferStatus.submitted);
   });
 
-  test('9. sans réseau → reste en unknownOutcome, et le passage s\'arrête', () async {
-    store.byKey['k1'] = localTransfer('k1', TransferStatus.unknownOutcome);
-    store.byKey['k2'] = localTransfer('k2', TransferStatus.pendingSubmission);
-    server.findFailure = const NetworkFailure();
+  test(
+    '9. sans réseau → reste en unknownOutcome, et le passage s\'arrête',
+    () async {
+      store.byKey['k1'] = localTransfer('k1', TransferStatus.unknownOutcome);
+      store.byKey['k2'] = localTransfer('k2', TransferStatus.pendingSubmission);
+      server.findFailure = const NetworkFailure();
 
-    await resume();
+      await resume();
 
-    // k2 n'est même pas tenté : le serveur est injoignable.
-    expect(log, ['api.find k1', 'store.save k1 unknownOutcome']);
-    expect(statusOf('k1'), TransferStatus.unknownOutcome);
-    expect(statusOf('k2'), TransferStatus.pendingSubmission);
-  });
+      // k2 n'est même pas tenté : le serveur est injoignable.
+      expect(log, ['api.find k1', 'store.save k1 unknownOutcome']);
+      expect(statusOf('k1'), TransferStatus.unknownOutcome);
+      expect(statusOf('k2'), TransferStatus.pendingSubmission);
+    },
+  );
 
   test('9 bis. rejeu sans réponse → passe en unknownOutcome', () async {
     store.byKey['k1'] = localTransfer('k1', TransferStatus.pendingSubmission);
@@ -91,15 +94,18 @@ void main() {
     expect(server.created.keys, unorderedEquals(['k1', 'k2']));
   });
 
-  test('un refus n\'empêche pas de réconcilier les transferts suivants', () async {
-    store.byKey['k1'] = localTransfer('k1', TransferStatus.pendingSubmission);
-    store.byKey['k2'] = localTransfer('k2', TransferStatus.pendingSubmission);
-    server.submitFailure = const RejectedFailure('validation_error');
+  test(
+    'un refus n\'empêche pas de réconcilier les transferts suivants',
+    () async {
+      store.byKey['k1'] = localTransfer('k1', TransferStatus.pendingSubmission);
+      store.byKey['k2'] = localTransfer('k2', TransferStatus.pendingSubmission);
+      server.submitFailure = const RejectedFailure('validation_error');
 
-    await resume();
+      await resume();
 
-    expect(statusOf('k1'), TransferStatus.rejected);
-    expect(statusOf('k2'), TransferStatus.rejected);
-    expect(log, contains('api.submit k2'));
-  });
+      expect(statusOf('k1'), TransferStatus.rejected);
+      expect(statusOf('k2'), TransferStatus.rejected);
+      expect(log, contains('api.submit k2'));
+    },
+  );
 }

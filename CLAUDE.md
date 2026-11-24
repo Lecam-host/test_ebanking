@@ -13,7 +13,8 @@ expliquée et défendue en entretien.
   ou au téléphone (app tuée juste après « Envoyer », serveur qui répond après 30 s ou jamais).
 - **Historique hors ligne** : il s'affiche sans réseau, avec l'heure de sa dernière mise à jour.
 - **Gestion d'état** : Riverpod, sans génération de code.
-- Viendront plus tard : l'auth (OTP + PIN), le stockage sécurisé complet et FCM.
+- Énoncé officiel : `~/Downloads/Test_technique_Mobile.pdf` (auth, stockage sécurisé, FCM imposé,
+  design Figma, README et diagrammes exigés). Reste à faire : FCM, design, documentation.
 - **Serveur simulé** : `mock_server/` (Node + Express). `mock_server/server.js` est la
   référence du contrat d'API.
 
@@ -68,6 +69,16 @@ test/                       même arborescence que lib/
   inconnu, jamais un refus. Seul un 4xx (sauf 401) donne `RejectedFailure`.
 - **Tests d'intégration** : tag `integration`, ignorés par défaut via `skip` dans `dart_test.yaml`.
   `exclude_tags` ne convient pas : il l'emporte sur `--tags` et plus rien ne les lancerait.
+- **Session** : code SMS une fois par téléphone, puis code secret (PIN) de 4 chiffres à
+  l'ouverture, au retour après 1 min d'arrière-plan et à chaque envoi. Jeton d'accès court en
+  mémoire seulement ; jeton de renouvellement (rotation, usage unique) dans
+  `flutter_secure_storage`. `SessionManager` renouvelle en silence (un seul échange à la fois) ;
+  `AuthInterceptor` (Dio) rejoue la requête après un 401, avec la même `Idempotency-Key`.
+- **Code secret** : vérifié sur le téléphone (l'historique doit s'ouvrir en mode avion), gardé en
+  empreinte SHA-256 salée ; 5 essais ratés → déconnexion. Déconnexion (`SignOut`) : transferts,
+  PIN et session effacés du téléphone, puis révocation côté serveur.
+- **Outils réseau partagés** : `lib/core/data/` (`createDio`, `failureFromDioException`). Le dossier
+  s'appelle `data` pour que le test d'architecture interdise au domaine de l'importer.
 - **Injection (Riverpod)** : `presentation/transfer_providers.dart` déclare les ports
   (`transferRepositoryProvider`, `transferLocalStoreProvider`, `isOnlineProvider`) sans
   implémentation et en construit les cas d'usage ; `lib/app/providers.dart` les branche
@@ -134,8 +145,19 @@ Transfert JSON : `{ id, idempotencyKey, amount, currency, recipientPhone, recipi
 status, createdAt, updatedAt }`. `amount` est un entier en FCFA, `currency` vaut `"XOF"`,
 les dates sont en ISO 8601.
 
+Les routes `/transfers` exigent `Authorization: Bearer <jeton d'accès>` (401 `unauthorized`,
+`token_expired` ou `session_revoked`) ; chaque client ne voit que ses transferts. Auth dans
+`mock_server/auth.js`.
+
 | Route | Réponses |
 |---|---|
+| `POST /auth/otp` `{ phone }` | 204 ; le code SMS est écrit dans la console du serveur |
+| `POST /auth/token` `{ phone, code }` | 200 `{ accessToken, refreshToken, expiresIn }` ; 401 `otp_invalid` ; 429 après 5 essais |
+| `POST /auth/refresh` `{ refreshToken }` | 200 nouveaux jetons (l'ancien est consommé) ; un jeton réutilisé révoque la session |
+| `POST /auth/logout` `{ refreshToken }` | 204, session révoquée |
+| `GET /admin/otp?phone=` | dernier code SMS (démo, tests) |
+| `POST /admin/sessions/expire` | tous les jetons d'accès expirent (démo « session expirée ») |
+| `POST /admin/sessions/revoke` `{ phone }` | révoque les sessions d'un numéro (démo « téléphone volé ») |
 | `POST /transfers` + en-tête `Idempotency-Key` | 201 créé ; 200 doublon reconnu (le transfert existant est renvoyé) ; 400 `idempotency_key_required` ; 422 `validation_error` (avec `details`) ; 422 `idempotency_key_reused` |
 | `GET /transfers` | 200 `{ items: [...], serverTime }`, du plus récent au plus ancien |
 | `GET /transfers?idempotencyKey=K` | 200 transfert ; 404 `not_found` si la clé est inconnue |

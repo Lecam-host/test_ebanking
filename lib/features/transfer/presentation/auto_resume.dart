@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:test_ebanking/features/auth/presentation/auth_notifier.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer_history.dart';
 import 'package:test_ebanking/features/transfer/presentation/transfer_providers.dart';
 
@@ -48,8 +49,14 @@ final autoResumeProvider = Provider<AutoResume>((ref) {
   });
   ref.onDispose(autoResume.dispose);
 
-  // 1. Au démarrage.
-  autoResume.run();
+  // 1. Au démarrage, dès que la session est relue (même verrouillée : ce sont
+  //    les transferts du client, et le serveur exige son jeton).
+  ref.listen(authNotifierProvider.select((auth) => auth.status.isSignedIn), (
+    wasSignedIn,
+    isSignedIn,
+  ) {
+    if (isSignedIn && wasSignedIn != true) autoResume.run();
+  }, fireImmediately: true);
 
   // 2. Au retour du réseau. Simple déclencheur : c'est le serveur qui tranche.
   ref.listen(isOnlineProvider, (previous, next) {

@@ -70,6 +70,12 @@ class TransferLocalStoreImpl implements TransferLocalStore {
     return anyChange.watch().asyncMap((_) => _readHistory());
   }
 
+  @override
+  Future<void> clear() => _db.transaction(() async {
+    await _db.delete(_db.transfers).go();
+    await _db.delete(_db.syncState).go();
+  });
+
   /// Les deux lectures dans une transaction : la liste et sa date de synchro
   /// viennent toujours du même instant.
   Future<TransferHistory> _readHistory() => _db.transaction(() async {

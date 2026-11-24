@@ -18,7 +18,11 @@ void main() {
 
   test('montant nul ou négatif refusé', () {
     for (final amount in [0, -100]) {
-      expect(request(amount: amount).validate(), hasLength(1), reason: '$amount');
+      expect(
+        request(amount: amount).validate(),
+        hasLength(1),
+        reason: '$amount',
+      );
     }
   });
 

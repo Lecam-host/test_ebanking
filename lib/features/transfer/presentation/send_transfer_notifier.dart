@@ -1,6 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:test_ebanking/core/failure.dart';
 import 'package:test_ebanking/core/result.dart';
+import 'package:test_ebanking/features/auth/domain/entities/pin_check.dart';
+import 'package:test_ebanking/features/auth/presentation/auth_notifier.dart';
+import 'package:test_ebanking/features/auth/presentation/auth_providers.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer_request.dart';
 import 'package:test_ebanking/features/transfer/presentation/transfer_providers.dart';
@@ -12,6 +15,7 @@ class SendFormState {
     this.isSending = false,
     this.sentRequest,
     this.result,
+    this.pinError,
   });
 
   /// Clé de CE formulaire : la même pour chaque appui et chaque « Réessayer ».
@@ -26,6 +30,9 @@ class SendFormState {
 
   /// Résultat du dernier envoi ; null tant que rien n'est revenu.
   final Result<Transfer>? result;
+
+  /// Code secret refusé : rien n'a été envoyé.
+  final String? pinError;
 
   bool get isLocked => sentRequest != null;
 
@@ -42,23 +49,75 @@ class SendFormState {
 
 class SendTransferNotifier extends Notifier<SendFormState> {
   @override
-  SendFormState build() => _newForm();
+  SendFormState build() {
+    // Déconnexion : les données sont effacées, le formulaire repart de zéro.
+    ref.listen(authNotifierProvider.select((auth) => auth.status), (_, status) {
+      if (status == AuthStatus.signedOut) state = _newForm();
+    });
+    return _newForm();
+  }
 
-  Future<void> send(TransferRequest request) async {
+  /// Envoi depuis le formulaire : le code secret est demandé à chaque fois,
+  /// comme dans les apps de paiement de la région. Un téléphone volé
+  /// déverrouillé ne suffit donc pas pour envoyer de l'argent.
+  Future<void> send(TransferRequest request, {required String pin}) async {
     // Un double appui arrive avant que le bouton soit redessiné désactivé :
     // c'est ici qu'il est arrêté.
     if (state.isSending) return;
-
+    _setSending();
+    if (!await _pinAccepted(pin)) return;
     // Formulaire figé : on renvoie toujours le contenu déjà enregistré.
-    final toSend = state.sentRequest ?? request;
-    final key = state.idempotencyKey;
-    state = SendFormState(
-      idempotencyKey: key,
-      isSending: true,
-      sentRequest: state.sentRequest,
-      result: state.result,
-    );
+    await _submit(state.sentRequest ?? request);
+  }
 
+  /// « Réessayer » : même clé, même contenu. Le code secret a déjà été donné
+  /// pour CE transfert.
+  Future<void> retry() async {
+    final sent = state.sentRequest;
+    if (state.isSending || sent == null) return;
+    _setSending();
+    await _submit(sent);
+  }
+
+  /// Nouveau transfert : nouvelle clé et formulaire vierge. Avec build(),
+  /// c'est le seul endroit où une clé est créée.
+  void startNew() {
+    if (!state.isSending) state = _newForm();
+  }
+
+  void _setSending() => state = SendFormState(
+    idempotencyKey: state.idempotencyKey,
+    isSending: true,
+    sentRequest: state.sentRequest,
+    result: state.result,
+  );
+
+  Future<bool> _pinAccepted(String pin) async {
+    final check = await ref.read(pinLockProvider).check(pin);
+    if (!ref.mounted) return false;
+    switch (check) {
+      case PinAccepted():
+        return true;
+      case PinRejected(:final remainingAttempts):
+        state = SendFormState(
+          idempotencyKey: state.idempotencyKey,
+          sentRequest: state.sentRequest,
+          result: state.result,
+          pinError:
+              'Code secret incorrect. Essais restants : '
+              '$remainingAttempts.',
+        );
+        return false;
+      case PinBlocked():
+        await ref
+            .read(authNotifierProvider.notifier)
+            .signOut(message: AuthNotifier.tooManyAttemptsMessage);
+        return false;
+    }
+  }
+
+  Future<void> _submit(TransferRequest toSend) async {
+    final key = state.idempotencyKey;
     try {
       final result = await ref.read(sendTransferProvider)(toSend, key);
       if (!ref.mounted) return;
@@ -81,18 +140,6 @@ class SendTransferNotifier extends Notifier<SendFormState> {
       }
       rethrow;
     }
-  }
-
-  /// Même clé, même contenu.
-  Future<void> retry() async {
-    final sent = state.sentRequest;
-    if (sent != null) await send(sent);
-  }
-
-  /// Nouveau transfert : nouvelle clé et formulaire vierge. Avec build(),
-  /// c'est le seul endroit où une clé est créée.
-  void startNew() {
-    if (!state.isSending) state = _newForm();
   }
 
   SendFormState _newForm() =>

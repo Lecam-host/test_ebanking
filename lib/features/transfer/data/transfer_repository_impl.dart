@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:test_ebanking/core/result.dart';
-import 'package:test_ebanking/features/transfer/data/remote/dio_failure.dart';
+import 'package:test_ebanking/core/data/dio_failure.dart';
 import 'package:test_ebanking/features/transfer/data/remote/transfer_api.dart';
 import 'package:test_ebanking/features/transfer/data/remote/transfer_json.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer.dart';

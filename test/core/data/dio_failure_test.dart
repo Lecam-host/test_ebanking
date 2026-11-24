@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:test_ebanking/core/failure.dart';
-import 'package:test_ebanking/features/transfer/data/remote/dio_failure.dart';
+import 'package:test_ebanking/core/data/dio_failure.dart';
 
 void main() {
   DioException dioError(DioExceptionType type, {int? status, Object? body}) {

@@ -132,6 +132,13 @@ class FakeTransferLocalStore implements TransferLocalStore {
   }
 
   @override
+  Future<void> clear() async {
+    log.add('store.clear');
+    byKey.clear();
+    lastSyncedAt = null;
+  }
+
+  @override
   Stream<TransferHistory> watchHistory() => Stream.value(
     TransferHistory(
       transfers: byKey.values.toList(),

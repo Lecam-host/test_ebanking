@@ -57,15 +57,16 @@ class Transfer {
   );
 
   /// Seul le statut évolue : le contenu est lié à la clé et ne change jamais.
-  Transfer withStatus(TransferStatus status, {required DateTime at}) => Transfer(
-    idempotencyKey: idempotencyKey,
-    serverId: serverId,
-    amount: amount,
-    currency: currency,
-    recipientName: recipientName,
-    recipientPhone: recipientPhone,
-    status: status,
-    createdAt: createdAt,
-    updatedAt: at,
-  );
+  Transfer withStatus(TransferStatus status, {required DateTime at}) =>
+      Transfer(
+        idempotencyKey: idempotencyKey,
+        serverId: serverId,
+        amount: amount,
+        currency: currency,
+        recipientName: recipientName,
+        recipientPhone: recipientPhone,
+        status: status,
+        createdAt: createdAt,
+        updatedAt: at,
+      );
 }

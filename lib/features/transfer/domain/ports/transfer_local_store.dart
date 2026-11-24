@@ -24,4 +24,7 @@ abstract interface class TransferLocalStore {
 
   /// Historique local, réémis à chaque changement.
   Stream<TransferHistory> watchHistory();
+
+  /// Efface tous les transferts et la date de synchro (déconnexion).
+  Future<void> clear();
 }

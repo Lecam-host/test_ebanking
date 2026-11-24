@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:test_ebanking/core/failure.dart';
 import 'package:test_ebanking/core/result.dart';
+import 'package:test_ebanking/features/auth/presentation/pages/pin_pages.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer_request.dart';
 import 'package:test_ebanking/features/transfer/presentation/formatters.dart';
 import 'package:test_ebanking/features/transfer/presentation/send_transfer_notifier.dart';
@@ -21,6 +22,7 @@ class _SendTransferPageState extends ConsumerState<SendTransferPage> {
   final _name = TextEditingController();
   final _phone = TextEditingController();
   final _amount = TextEditingController();
+  final _pin = TextEditingController();
 
   @override
   void initState() {
@@ -35,6 +37,7 @@ class _SendTransferPageState extends ConsumerState<SendTransferPage> {
     _name.dispose();
     _phone.dispose();
     _amount.dispose();
+    _pin.dispose();
     super.dispose();
   }
 
@@ -56,6 +59,14 @@ class _SendTransferPageState extends ConsumerState<SendTransferPage> {
     _name.clear();
     _phone.clear();
     _amount.clear();
+    _pin.clear();
+  }
+
+  void _send() {
+    final pin = _pin.text;
+    // Le code secret ne reste pas affiché, même masqué.
+    _pin.clear();
+    ref.read(sendTransferNotifierProvider.notifier).send(_request(), pin: pin);
   }
 
   @override
@@ -92,15 +103,20 @@ class _SendTransferPageState extends ConsumerState<SendTransferPage> {
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             decoration: const InputDecoration(labelText: 'Montant (FCFA)'),
           ),
-          const SizedBox(height: 16),
-          if (!form.isLocked)
+          if (!form.isLocked) ...[
+            PinField(
+              controller: _pin,
+              label: 'Code secret',
+              enabled: !form.isSending,
+            ),
+            if (form.pinError != null) Text(form.pinError!),
+            const SizedBox(height: 16),
             FilledButton(
               // null = désactivé pendant l'envoi.
-              onPressed: form.isSending
-                  ? null
-                  : () => notifier.send(_request()),
+              onPressed: form.isSending ? null : _send,
               child: Text(form.isSending ? 'Envoi en cours…' : 'Envoyer'),
             ),
+          ],
           if (message != null)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),

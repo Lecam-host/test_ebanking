@@ -1,6 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const { chaos, setChaos, getChaos } = require('./chaos');
+const { registerAuthRoutes, requireAuth, resetAuth } = require('./auth');
 
 const app = express();
 app.use(express.json());
@@ -13,6 +14,11 @@ app.use((req, _res, next) => {
 });
 
 app.use(chaos);
+
+// Connexion (code SMS, jetons). Les transferts exigent ensuite un jeton d'accès,
+// et chaque client ne voit que les siens (req.phone).
+registerAuthRoutes(app);
+app.use('/transfers', requireAuth);
 
 // ---------------------------------------------------------------------------
 // Stockage en mémoire (remplaçable par une vraie base plus tard).
@@ -70,7 +76,7 @@ app.post('/transfers', (req, res) => {
   const existingId = byIdempotencyKey.get(key);
   if (existingId) {
     const existing = transfers.get(existingId);
-    if (existing.fingerprint !== fp) {
+    if (existing.fingerprint !== fp || existing.owner !== req.phone) {
       // Même clé, contenu différent : on refuse plutôt que de deviner.
       return res.status(422).json({
         error: 'idempotency_key_reused',
@@ -86,6 +92,7 @@ app.post('/transfers', (req, res) => {
     id: `tr_${crypto.randomUUID()}`,
     idempotencyKey: key,
     fingerprint: fp,
+    owner: req.phone,
     amount: req.body.amount,
     currency: req.body.currency,
     recipientPhone: req.body.recipientPhone,
@@ -105,11 +112,12 @@ app.post('/transfers', (req, res) => {
 app.get('/transfers', (req, res) => {
   const { idempotencyKey } = req.query;
   if (idempotencyKey) {
-    const id = byIdempotencyKey.get(idempotencyKey);
-    if (!id) return res.status(404).json({ error: 'not_found' });
-    return res.json(toPublic(transfers.get(id)));
+    const t = transfers.get(byIdempotencyKey.get(idempotencyKey));
+    if (!t || t.owner !== req.phone) return res.status(404).json({ error: 'not_found' });
+    return res.json(toPublic(t));
   }
   const list = [...transfers.values()]
+    .filter((t) => t.owner === req.phone)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .map(toPublic);
   return res.json({ items: list, serverTime: new Date().toISOString() });
@@ -117,12 +125,12 @@ app.get('/transfers', (req, res) => {
 
 app.get('/transfers/:id', (req, res) => {
   const t = transfers.get(req.params.id);
-  if (!t) return res.status(404).json({ error: 'not_found' });
+  if (!t || t.owner !== req.phone) return res.status(404).json({ error: 'not_found' });
   return res.json(toPublic(t));
 });
 
 function toPublic(t) {
-  const { fingerprint: _fp, ...rest } = t;
+  const { fingerprint: _fp, owner: _owner, ...rest } = t;
   return rest;
 }
 
@@ -159,6 +167,7 @@ app.post('/admin/chaos', (req, res) => {
 app.post('/admin/reset', (_req, res) => {
   transfers.clear();
   byIdempotencyKey.clear();
+  resetAuth();
   setChaos({ mode: 'none' });
   return res.json({ ok: true });
 });

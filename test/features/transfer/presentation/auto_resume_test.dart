@@ -4,6 +4,7 @@ import 'package:fake_async/fake_async.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:test_ebanking/core/result.dart';
+import 'package:test_ebanking/features/auth/presentation/auth_notifier.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer_history.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer_status.dart';
 import 'package:test_ebanking/features/transfer/domain/usecases/resume_pending_transfers.dart';
@@ -11,6 +12,7 @@ import 'package:test_ebanking/features/transfer/domain/usecases/sync_history.dar
 import 'package:test_ebanking/features/transfer/presentation/auto_resume.dart';
 import 'package:test_ebanking/features/transfer/presentation/transfer_providers.dart';
 
+import '../../auth/auth_fakes.dart';
 import '../domain/fakes.dart';
 
 TransferHistory historyWith(TransferStatus status) => TransferHistory(
@@ -68,10 +70,12 @@ void main() {
     expect(passes, 2);
   });
 
-  test('au démarrage, puis au retour du réseau (pas à sa perte)', () async {
+  test('dès que la session est relue, puis au retour du réseau (pas à sa '
+      'perte)', () async {
     final resume = _CountingResume();
     final network = StreamController<bool>();
     addTearDown(network.close);
+    final auth = FixedAuthNotifier(AuthStatus.restoring);
     final container = ProviderContainer.test(
       overrides: [
         resumePendingTransfersProvider.overrideWithValue(resume),
@@ -80,10 +84,15 @@ void main() {
         historyProvider.overrideWith(
           (ref) => Stream.value(historyWith(TransferStatus.paid)),
         ),
+        authNotifierProvider.overrideWith(() => auth),
       ],
     );
     // Comme App : on écoute le provider pour le garder actif.
     container.listen(autoResumeProvider, (_, _) {});
+    await pumpEventQueue();
+    expect(resume.calls, 0); // pas de jeton tant que la session n'est pas relue
+
+    auth.set(AuthStatus.locked);
     await pumpEventQueue();
     expect(resume.calls, 1);
 
