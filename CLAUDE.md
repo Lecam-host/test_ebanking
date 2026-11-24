@@ -101,8 +101,10 @@ test/                       même arborescence que lib/
   accepté (pour le solde), puis toutes les 30 s tant qu'un transfert est incertain ; un seul
   passage à la fois.
 - **URL de l'API** : `--dart-define=API_BASE_URL=...` (`lib/core/config.dart`), par défaut
-  `http://10.0.2.2:3000` (la machine hôte vue depuis l'émulateur Android). HTTP en clair est
-  autorisé seulement dans `android/app/src/debug/AndroidManifest.xml`.
+  `http://localhost:3000`. Simulateur iOS : rien à faire. Émulateur Android ou téléphone en
+  USB : `adb reverse tcp:3000 tcp:3000` (à refaire après chaque rebranchement). Téléphone en
+  Wi-Fi seulement : l'adresse IP du Mac. HTTP en clair est autorisé seulement dans
+  `android/app/src/debug/AndroidManifest.xml`.
 
 ## Invariants d'envoi (le cœur du test)
 
@@ -203,6 +205,7 @@ dart run build_runner build       # régénère le code Drift (*.g.dart, commit�
 cd mock_server && npm start       # serveur simulé (npm install la première fois)
 cd mock_server && ./try.sh        # vérification manuelle de l'idempotence et des pannes
 cd mock_server && ./advance.sh    # fait avancer le dernier transfert → notification FCM
+adb reverse tcp:3000 tcp:3000    # émulateur Android ou téléphone en USB : localhost → le Mac
 flutter run --dart-define=API_BASE_URL=http://<ip-du-mac>:3000   # vrai téléphone, même Wi-Fi
 ```
 
