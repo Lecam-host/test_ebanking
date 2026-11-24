@@ -9,6 +9,18 @@ String formatAmount(int amount) {
   return '$grouped FCFA';
 }
 
+/// 0701020304 → « 07 01 02 03 04 ».
+String formatPhone(String phone) => [
+  for (var i = 0; i < phone.length; i += 2)
+    phone.substring(i, i + 2 > phone.length ? phone.length : i + 2),
+].join(' ');
+
+/// 0701020304 → « 07 •• •• 03 04 », comme un numéro de carte masqué.
+String maskPhone(String phone) => phone.length != 10
+    ? phone
+    : '${phone.substring(0, 2)} •• •• '
+          '${phone.substring(6, 8)} ${phone.substring(8)}';
+
 /// « 23/11/2026 14:05 », à l'heure du téléphone.
 String formatDateTime(DateTime dateTime) {
   final local = dateTime.toLocal();

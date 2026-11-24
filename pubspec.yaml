@@ -47,6 +47,7 @@ dependencies:
   firebase_core: ^5.2.0
   firebase_messaging: ^17.1.0
   pretty_dio_logger: ^1.4.0
+  flutter_svg: ^2.5.0
 
 dev_dependencies:
   flutter_test:
@@ -92,6 +93,10 @@ flutter:
         - asset: assets/fonts/poppins/Poppins-Regular.ttf
         - asset: assets/fonts/poppins/Poppins-SemiBold.ttf
           weight: 600
+
+  # Icônes SVG du kit Figma (accueil).
+  assets:
+    - assets/icons/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

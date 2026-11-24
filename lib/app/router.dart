@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:test_ebanking/core/presentation/app_bottom_bar.dart';
 import 'package:test_ebanking/features/auth/presentation/auth_notifier.dart';
 import 'package:test_ebanking/features/auth/presentation/pages/login_page.dart';
 import 'package:test_ebanking/features/auth/presentation/pages/pin_pages.dart';
 import 'package:test_ebanking/features/transfer/presentation/pages/history_page.dart';
+import 'package:test_ebanking/features/transfer/presentation/pages/home_page.dart';
 import 'package:test_ebanking/features/transfer/presentation/pages/send_transfer_page.dart';
 import 'package:test_ebanking/features/transfer/presentation/pages/transfer_detail_page.dart';
 
@@ -26,7 +28,7 @@ String? authRedirect(AuthStatus status, Uri uri) {
     AuthStatus.locked => '/unlock',
     AuthStatus.unlocked => null,
   };
-  if (required == null) return onAuthPage ? (from ?? '/transfers') : null;
+  if (required == null) return onAuthPage ? (from ?? '/home') : null;
   if (location == required) return null;
   return from == null
       ? required
@@ -41,7 +43,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.onDispose(status.dispose);
 
   return GoRouter(
-    initialLocation: '/transfers',
+    initialLocation: '/home',
     refreshListenable: status,
     redirect: (context, state) => authRedirect(status.value, state.uri),
     routes: [
@@ -53,20 +55,55 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
       GoRoute(path: '/pin', builder: (context, state) => const CreatePinPage()),
       GoRoute(path: '/unlock', builder: (context, state) => const UnlockPage()),
+      // Hors de la barre du bas : l'envoi occupe tout l'écran.
       GoRoute(
         path: '/send',
         builder: (context, state) => const SendTransferPage(),
       ),
-      GoRoute(
-        path: '/transfers',
-        builder: (context, state) => const HistoryPage(),
-        routes: [
-          // L'identifiant est la clé d'idempotence, pas l'id serveur : elle
-          // existe dès l'enregistrement local, avant toute réponse du serveur.
-          GoRoute(
-            path: ':id',
-            builder: (context, state) =>
-                TransferDetailPage(idempotencyKey: state.pathParameters['id']!),
+      // Accueil et historique, avec la barre du bas. indexedStack garde
+      // chaque onglet en vie : on retrouve l'historique là où on l'a laissé.
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, shell) => Scaffold(
+          body: shell,
+          bottomNavigationBar: AppBottomBar(
+            items: const [
+              (icon: Icons.home_rounded, label: 'Accueil'),
+              (icon: Icons.receipt_long_rounded, label: 'Historique'),
+            ],
+            currentIndex: shell.currentIndex,
+            onTap: (index) => shell.goBranch(
+              index,
+              initialLocation: index == shell.currentIndex,
+            ),
+          ),
+        ),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/home',
+                builder: (context, state) => const HomePage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/transfers',
+                builder: (context, state) => const HistoryPage(),
+                routes: [
+                  // L'identifiant est la clé d'idempotence, pas l'id serveur :
+                  // elle existe dès l'enregistrement local, avant toute
+                  // réponse du serveur.
+                  GoRoute(
+                    path: ':id',
+                    builder: (context, state) => TransferDetailPage(
+                      idempotencyKey: state.pathParameters['id']!,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
       ),

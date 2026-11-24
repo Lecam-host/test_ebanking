@@ -26,6 +26,9 @@ class SessionManager {
 
   String? get accessToken => _session?.accessToken;
 
+  /// Numéro du client connecté.
+  String? get phone => _session?.phone;
+
   /// Au démarrage, sans réseau : relit la session gardée sur le téléphone. Le
   /// jeton d'accès sera obtenu au premier appel au serveur.
   Future<bool> restore() async {

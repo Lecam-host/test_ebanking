@@ -27,8 +27,8 @@ void main() {
   });
 
   test('déverrouillé : les pages de l\'app restent, celles de connexion '
-      'renvoient à l\'historique', () {
+      'renvoient à l\'accueil', () {
     expect(redirect(AuthStatus.unlocked, '/send'), isNull);
-    expect(redirect(AuthStatus.unlocked, '/login'), '/transfers');
+    expect(redirect(AuthStatus.unlocked, '/login'), '/home');
   });
 }

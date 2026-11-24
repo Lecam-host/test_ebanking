@@ -122,3 +122,9 @@ class AuthNotifier extends Notifier<AuthState> {
 final authNotifierProvider = NotifierProvider<AuthNotifier, AuthState>(
   AuthNotifier.new,
 );
+
+/// Numéro du client connecté, relu à chaque changement de session.
+final currentPhoneProvider = Provider<String?>((ref) {
+  ref.watch(authNotifierProvider);
+  return ref.read(sessionManagerProvider).phone;
+});
