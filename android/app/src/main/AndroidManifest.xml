@@ -5,8 +5,11 @@
         android:label="test_ebanking"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!-- Portrait seulement : déclaré ici plutôt qu'en Dart, le système
+             l'applique dès l'écran de lancement, avant que Flutter démarre. -->
         <activity
             android:name=".MainActivity"
+            android:screenOrientation="portrait"
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""
