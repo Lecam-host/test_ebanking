@@ -87,7 +87,9 @@ test/                       même arborescence que lib/
   (FID : `register()` / `onRegistered`, `getToken` est déprécié). Le FID est envoyé au serveur
   (`POST /devices`) et rattaché à la session : une session révoquée ne reçoit plus rien.
   Inscription ratée (serveur injoignable au démarrage) : refaite après chaque synchro réussie
-  (`PushSubscription.retryIfNeeded`, déclenché par `App`).
+  (`PushSubscription.retryIfNeeded`, déclenché par `App`). Sur Android, l'inscription par FID
+  exige `firebase_messaging_installation_id_enabled` dans `AndroidManifest.xml` : sans cette
+  ligne, `onRegistered` ne se déclenche jamais.
   Arrière-plan / app fermée : notification affichée par le système, l'appui ouvre
   `/transfers/<clé>` (via le déverrouillage). App ouverte : bandeau dans l'app + rafraîchissement.
   Texte neutre (ni montant ni bénéficiaire) car visible sur l'écran verrouillé.
