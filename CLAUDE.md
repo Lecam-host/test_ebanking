@@ -86,6 +86,8 @@ test/                       même arborescence que lib/
 - **Notifications (FCM)** : firebase_messaging 17, inscription par identifiant d'installation
   (FID : `register()` / `onRegistered`, `getToken` est déprécié). Le FID est envoyé au serveur
   (`POST /devices`) et rattaché à la session : une session révoquée ne reçoit plus rien.
+  Inscription ratée (serveur injoignable au démarrage) : refaite après chaque synchro réussie
+  (`PushSubscription.retryIfNeeded`, déclenché par `App`).
   Arrière-plan / app fermée : notification affichée par le système, l'appui ouvre
   `/transfers/<clé>` (via le déverrouillage). App ouverte : bandeau dans l'app + rafraîchissement.
   Texte neutre (ni montant ni bénéficiaire) car visible sur l'écran verrouillé.

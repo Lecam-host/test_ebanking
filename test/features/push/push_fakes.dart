@@ -1,6 +1,7 @@
 // Faux écrits à la main pour les tests des notifications.
 import 'dart:async';
 
+import 'package:test_ebanking/core/failure.dart';
 import 'package:test_ebanking/core/result.dart';
 import 'package:test_ebanking/features/push/domain/entities/push_message.dart';
 import 'package:test_ebanking/features/push/domain/ports/push_messaging.dart';
@@ -48,9 +49,12 @@ class FakePushRegistry implements PushRegistry {
 
   final List<String> log;
 
+  /// false : le serveur est injoignable (app démarrée hors ligne).
+  var reachable = true;
+
   @override
   Future<Result<void>> register(String installationId) async {
     log.add('api.registerDevice $installationId');
-    return const Ok(null);
+    return reachable ? const Ok(null) : const Err(NetworkFailure());
   }
 }

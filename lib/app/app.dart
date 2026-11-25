@@ -9,6 +9,7 @@ import 'package:test_ebanking/features/push/domain/entities/push_message.dart';
 import 'package:test_ebanking/features/push/presentation/push_activation.dart';
 import 'package:test_ebanking/features/push/presentation/push_providers.dart';
 import 'package:test_ebanking/features/transfer/presentation/auto_resume.dart';
+import 'package:test_ebanking/features/transfer/presentation/transfer_providers.dart';
 
 /// Racine de l'application.
 class App extends ConsumerStatefulWidget {
@@ -83,6 +84,16 @@ class _AppState extends ConsumerState<App> {
     // inscription aux notifications.
     ref.watch(autoResumeProvider);
     ref.watch(pushActivationProvider);
+    // Chaque synchro réussie prouve que le serveur répond : si l'inscription
+    // aux notifications avait échoué, elle est refaite à ce moment-là.
+    ref.listen(
+      historyProvider.select((history) => history.value?.lastSyncedAt),
+      (previous, syncedAt) {
+        if (syncedAt != null && syncedAt != previous) {
+          ref.read(pushSubscriptionProvider).retryIfNeeded();
+        }
+      },
+    );
     return MaterialApp.router(
       title: 'test_ebanking',
       theme: buildAppTheme(),
