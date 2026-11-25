@@ -234,6 +234,7 @@ dart run build_runner build       # régénère le code Drift (*.g.dart, commit�
 cd mock_server && npm start       # serveur simulé (npm install la première fois)
 cd mock_server && ./try.sh        # vérification manuelle de l'idempotence et des pannes
 cd mock_server && ./advance.sh    # fait avancer le dernier transfert → notification FCM
+./tool/show_phone_storage.sh "Awa Kone"   # données du téléphone (app debug) illisibles hors de l'app
 adb reverse tcp:3000 tcp:3000    # émulateur Android ou téléphone en USB : localhost → le Mac
 flutter run --dart-define=API_BASE_URL=http://<ip-du-mac>:3000   # vrai téléphone, même Wi-Fi
 ```

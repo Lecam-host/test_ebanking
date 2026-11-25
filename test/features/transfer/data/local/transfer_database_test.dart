@@ -41,6 +41,14 @@ void main() {
     );
     await withoutKey.close();
 
+    // Une autre clé ne l'ouvre pas non plus.
+    final wrongKey = TransferDatabase(encryptedExecutor(file, 'cd' * 32));
+    await expectLater(
+      wrongKey.select(wrongKey.transfers).get(),
+      throwsA(anything),
+    );
+    await wrongKey.close();
+
     // Avec la clé, on retrouve le transfert.
     final reopened = TransferDatabase(encryptedExecutor(file, key));
     final saved = await TransferLocalStoreImpl(reopened).findByKey('k1');
