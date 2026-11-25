@@ -128,6 +128,34 @@ void main() {
     expect(auth.signOutMessages, hasLength(1));
   });
 
+  test('confirmation seulement si le serveur a accepté ; rouvrir l\'écran '
+      'après un transfert accepté repart d\'une nouvelle clé', () async {
+    setUpWith(FakeSendTransfer()); // répond « envoyé »
+    await send(validRequest);
+    expect(form().accepted?.idempotencyKey, 'key-1');
+
+    notifier().open();
+
+    expect(form().idempotencyKey, 'key-2');
+    expect(form().accepted, isNull);
+  });
+
+  test('transfert incertain : pas de confirmation, et rouvrir l\'écran garde '
+      'sa clé', () async {
+    setUpWith(
+      FakeSendTransfer(
+        (_, key) async => Ok(localTransfer(key, TransferStatus.unknownOutcome)),
+      ),
+    );
+    await send(validRequest);
+    expect(form().accepted, isNull);
+
+    notifier().open();
+
+    expect(form().idempotencyKey, 'key-1');
+    expect(form().isLocked, isTrue);
+  });
+
   test('déconnexion → le formulaire repart avec une nouvelle clé', () async {
     setUpWith(FakeSendTransfer());
     await send(validRequest);

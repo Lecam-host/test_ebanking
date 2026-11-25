@@ -5,6 +5,7 @@ import 'package:test_ebanking/core/result.dart';
 import 'package:test_ebanking/features/auth/presentation/auth_notifier.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer_history.dart';
 import 'package:test_ebanking/features/transfer/presentation/formatters.dart';
+import 'package:test_ebanking/features/transfer/presentation/pages/send_transfer_page.dart';
 import 'package:test_ebanking/features/transfer/presentation/transfer_providers.dart';
 
 /// Historique lu dans la base du téléphone : il s'affiche sans réseau, avec
@@ -30,7 +31,7 @@ class HistoryPage extends ConsumerWidget {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/send'),
+        onPressed: () => openSendTransfer(context, ref),
         icon: const Icon(Icons.send),
         label: const Text('Nouveau transfert'),
       ),

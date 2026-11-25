@@ -9,9 +9,20 @@ import 'package:test_ebanking/features/transfer/domain/entities/transfer_request
 import 'package:test_ebanking/features/transfer/presentation/formatters.dart';
 import 'package:test_ebanking/features/transfer/presentation/send_transfer_notifier.dart';
 import 'package:test_ebanking/features/transfer/presentation/transfer_providers.dart';
+import 'package:test_ebanking/features/transfer/presentation/widgets/transfer_success_view.dart';
+
+/// Ouvre l'écran d'envoi (accueil, historique). Après un transfert accepté,
+/// il repart d'un formulaire neuf (voir [SendTransferNotifier.open]).
+void openSendTransfer(BuildContext context, WidgetRef ref) {
+  ref.read(sendTransferNotifierProvider.notifier).open();
+  context.push('/send');
+}
 
 /// Formulaire d'envoi. La validation n'est faite qu'une fois, dans le domaine
 /// (SendTransfer) : l'écran affiche ses messages au lieu de la dupliquer.
+///
+/// Une fois le transfert accepté par le serveur, il laisse la place à
+/// l'écran de confirmation du kit.
 class SendTransferPage extends ConsumerStatefulWidget {
   const SendTransferPage({super.key});
 
@@ -70,9 +81,21 @@ class _SendTransferPageState extends ConsumerState<SendTransferPage> {
     ref.read(sendTransferNotifierProvider.notifier).send(_request(), pin: pin);
   }
 
+  /// « Terminer » : retour à l'écran précédent ; la prochaine ouverture
+  /// repartira d'un formulaire neuf. Sans écran précédent (lien direct), on
+  /// repart tout de suite d'un formulaire neuf.
+  Future<void> _finish() async {
+    final popped = await Navigator.of(context).maybePop();
+    if (!popped && mounted) _startNew();
+  }
+
   @override
   Widget build(BuildContext context) {
     final form = ref.watch(sendTransferNotifierProvider);
+    final accepted = form.accepted;
+    if (accepted != null) {
+      return TransferSuccessView(transfer: accepted, onDone: _finish);
+    }
     final notifier = ref.read(sendTransferNotifierProvider.notifier);
     final editable = !form.isLocked && !form.isSending;
     final message = _message(form);

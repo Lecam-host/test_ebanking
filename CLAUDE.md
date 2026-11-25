@@ -101,6 +101,10 @@ test/                       même arborescence que lib/
   (`overrides` du `ProviderScope`), les tests y branchent des faux.
 - **Formulaire d'envoi** : `SendTransferNotifier` sans autoDispose (quitter l'écran ne crée pas
   de nouvelle clé) ; une clé par formulaire, figé dès qu'un transfert est enregistré.
+  Transfert accepté par le serveur (envoyé, en cours, payé) → écran de confirmation du kit
+  (`TransferSuccessView`, illustration `assets/images/transfer_success.png`) ; jamais pour un
+  transfert incertain. Rouvrir l'écran après un transfert accepté repart d'une nouvelle clé
+  (`openSendTransfer` → `SendTransferNotifier.open`).
 - **Reprise automatique** (`AutoResume`) : au démarrage, au retour du réseau, après un envoi
   accepté (pour le solde), puis toutes les 30 s tant qu'un transfert est incertain ; un seul
   passage à la fois.

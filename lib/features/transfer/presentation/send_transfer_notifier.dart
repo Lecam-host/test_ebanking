@@ -6,6 +6,7 @@ import 'package:test_ebanking/features/auth/presentation/auth_notifier.dart';
 import 'package:test_ebanking/features/auth/presentation/auth_providers.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer_request.dart';
+import 'package:test_ebanking/features/transfer/domain/entities/transfer_status.dart';
 import 'package:test_ebanking/features/transfer/presentation/transfer_providers.dart';
 
 /// État du formulaire d'envoi.
@@ -45,6 +46,18 @@ class SendFormState {
         Err(failure: RejectedFailure()) => false,
         _ => true,
       };
+
+  /// Transfert accepté par le serveur (envoyé, en cours, payé) : l'écran de
+  /// confirmation remplace le formulaire. Jamais pour un transfert incertain :
+  /// on n'annonce pas un succès que le serveur n'a pas confirmé.
+  Transfer? get accepted => switch (result) {
+    Ok(:final value)
+        when value.status == TransferStatus.submitted ||
+            value.status == TransferStatus.processing ||
+            value.status == TransferStatus.paid =>
+      value,
+    _ => null,
+  };
 }
 
 class SendTransferNotifier extends Notifier<SendFormState> {
@@ -83,6 +96,13 @@ class SendTransferNotifier extends Notifier<SendFormState> {
   /// c'est le seul endroit où une clé est créée.
   void startNew() {
     if (!state.isSending) state = _newForm();
+  }
+
+  /// À l'ouverture de l'écran d'envoi. Un transfert accepté par le serveur
+  /// est terminé : on repart d'un formulaire neuf. Un transfert incertain ou
+  /// une saisie en cours, eux, gardent leur formulaire et leur clé.
+  void open() {
+    if (state.accepted != null) startNew();
   }
 
   void _setSending() => state = SendFormState(

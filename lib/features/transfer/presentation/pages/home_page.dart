@@ -6,6 +6,7 @@ import 'package:test_ebanking/core/presentation/app_colors.dart';
 import 'package:test_ebanking/features/auth/presentation/auth_notifier.dart';
 import 'package:test_ebanking/features/transfer/presentation/formatters.dart';
 import 'package:test_ebanking/features/transfer/presentation/home_summary.dart';
+import 'package:test_ebanking/features/transfer/presentation/pages/send_transfer_page.dart';
 import 'package:test_ebanking/features/transfer/presentation/transfer_providers.dart';
 import 'package:test_ebanking/features/transfer/presentation/widgets/summary_card.dart';
 
@@ -59,7 +60,7 @@ class HomePage extends ConsumerWidget {
                         _Tile(
                           'transfer',
                           'Transfert',
-                          onTap: () => context.push('/send'),
+                          onTap: () => openSendTransfer(context, ref),
                         ),
                         _Tile('withdraw', 'Retrait'),
                         _Tile('mobile_prepaid', 'Recharge mobile'),

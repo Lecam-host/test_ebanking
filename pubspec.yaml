@@ -97,6 +97,7 @@ flutter:
   # Icônes SVG du kit Figma (accueil).
   assets:
     - assets/icons/
+    - assets/images/
 
   # To add assets to your application, add an assets section, like this:
   # assets:
