@@ -36,6 +36,27 @@ void main() {
     });
   });
 
+  test('date et heure sur deux chiffres', () {
+    final dateTime = DateTime(2026, 3, 5, 9, 7);
+    expect(formatDate(dateTime), '05/03/2026');
+    expect(formatTime(dateTime), '09:07');
+    expect(formatDateTime(dateTime), '05/03/2026 09:07');
+  });
+
+  test('jour de l\'historique : aujourd\'hui, hier, puis la date', () {
+    final now = DateTime(2026, 11, 23, 0, 30);
+
+    expect(dayLabel(DateTime(2026, 11, 23, 0, 5), now), 'Aujourd\'hui');
+    // 40 min plus tôt, mais la veille : c'est le jour qui compte.
+    expect(dayLabel(DateTime(2026, 11, 22, 23, 50), now), 'Hier');
+    expect(dayLabel(DateTime(2026, 11, 21, 12), now), '21/11/2026');
+    // Horloge du serveur un peu en avance, juste avant minuit.
+    expect(
+      dayLabel(DateTime(2026, 11, 24, 0, 1), DateTime(2026, 11, 23, 23, 59)),
+      'Aujourd\'hui',
+    );
+  });
+
   test('« Mis à jour il y a X » selon la dernière synchro', () {
     final now = DateTime(2026, 11, 23, 12);
 

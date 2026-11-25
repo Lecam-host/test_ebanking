@@ -3,8 +3,13 @@ import 'package:test_ebanking/core/presentation/app_colors.dart';
 
 /// Barre blanche à grand titre foncé des écrans « Confirm » du kit. Les
 /// autres écrans gardent la barre indigo du thème.
-PreferredSizeWidget lightAppBar(String title, {Widget? leading}) => AppBar(
+PreferredSizeWidget lightAppBar(
+  String title, {
+  Widget? leading,
+  List<Widget>? actions,
+}) => AppBar(
   leading: leading,
+  actions: actions,
   backgroundColor: Colors.white,
   foregroundColor: AppColors.text,
   surfaceTintColor: Colors.transparent,

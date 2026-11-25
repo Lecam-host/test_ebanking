@@ -115,6 +115,14 @@ test/                       même arborescence que lib/
   seul actif), bénéficiaires récents tirés de l'historique (`recentBeneficiaries`), montant en
   lettres (`amountInWords`). Ses enfants de liste restent fixes (ligne du solde toujours là) :
   un élément qui apparaît décalerait les champs et ferait perdre la saisie en cours.
+- **Historique** (écrans « Payment history » et « Transaction report » du kit) : lignes
+  groupées par jour (`sectionsByDay`, liste déjà triée par la base), onglets `HistoryFilter`
+  (Tous, En cours = non final, Payés, Échoués = failed + rejected), pastille `StatusIcon`
+  (orange en vérification, bleu, indigo, vert, rouge). Montant barré quand l'argent n'est pas
+  parti (`isUnsuccessful` : échoué donc remboursé, ou refusé donc jamais débité).
+  **Détail** (« Detail payment ») : statut et `statusExplanation` (ce qu'il veut dire pour
+  l'argent du client), puis un reçu (De, À, Numéro, dates, référence serveur ou « En attente
+  du serveur », frais, total).
 - **Reprise automatique** (`AutoResume`) : au démarrage, au retour du réseau, après un envoi
   accepté (pour le solde), puis toutes les 30 s tant qu'un transfert est incertain ; un seul
   passage à la fois.

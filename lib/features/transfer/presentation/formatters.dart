@@ -99,12 +99,39 @@ String maskPhone(String phone) => phone.length != 10
     : '${phone.substring(0, 2)} •• •• '
           '${phone.substring(6, 8)} ${phone.substring(8)}';
 
-/// « 23/11/2026 14:05 », à l'heure du téléphone.
-String formatDateTime(DateTime dateTime) {
+/// « 23/11/2026 », à l'heure du téléphone.
+String formatDate(DateTime dateTime) {
   final local = dateTime.toLocal();
-  String two(int n) => n.toString().padLeft(2, '0');
-  return '${two(local.day)}/${two(local.month)}/${local.year} '
-      '${two(local.hour)}:${two(local.minute)}';
+  return '${_two(local.day)}/${_two(local.month)}/${local.year}';
+}
+
+/// « 14:05 », à l'heure du téléphone.
+String formatTime(DateTime dateTime) {
+  final local = dateTime.toLocal();
+  return '${_two(local.hour)}:${_two(local.minute)}';
+}
+
+/// « 23/11/2026 14:05 », à l'heure du téléphone.
+String formatDateTime(DateTime dateTime) =>
+    '${formatDate(dateTime)} ${formatTime(dateTime)}';
+
+String _two(int n) => n.toString().padLeft(2, '0');
+
+/// Titre d'un jour de l'historique : « Aujourd'hui », « Hier » ou la date.
+String dayLabel(DateTime dateTime, DateTime now) {
+  // Jours du calendrier comptés en UTC : un jour de changement d'heure (23 h
+  // ou 25 h) ne fausse pas l'écart.
+  DateTime day(DateTime value) {
+    final local = value.toLocal();
+    return DateTime.utc(local.year, local.month, local.day);
+  }
+
+  return switch (day(now).difference(day(dateTime)).inDays) {
+    // ≤ 0 : une horloge serveur un peu en avance ne crée pas de « demain ».
+    <= 0 => 'Aujourd\'hui',
+    1 => 'Hier',
+    _ => formatDate(dateTime),
+  };
 }
 
 String statusLabel(TransferStatus status) => switch (status) {
@@ -115,6 +142,24 @@ String statusLabel(TransferStatus status) => switch (status) {
   TransferStatus.paid => 'Payé',
   TransferStatus.failed => 'Échoué',
   TransferStatus.rejected => 'Refusé',
+};
+
+/// Ce que le statut veut dire pour l'argent du client, sous le statut du
+/// détail.
+String statusExplanation(TransferStatus status) => switch (status) {
+  TransferStatus.pendingSubmission || TransferStatus.unknownOutcome =>
+    'Le serveur n\'a pas encore confirmé ce transfert. L\'app vérifie toute '
+        'seule ; il ne partira jamais deux fois.',
+  TransferStatus.submitted =>
+    'Le serveur a accepté le transfert ; son traitement va commencer.',
+  TransferStatus.processing =>
+    'Le paiement au bénéficiaire est en cours. En cas d\'échec, le montant '
+        'sera remboursé.',
+  TransferStatus.paid => 'L\'argent a été versé au bénéficiaire.',
+  TransferStatus.failed =>
+    'Le transfert a échoué : le montant a été remboursé sur votre compte.',
+  TransferStatus.rejected =>
+    'Le serveur a refusé ce transfert : rien n\'a été débité.',
 };
 
 /// « Mis à jour il y a 5 min », à partir de la dernière synchro réussie.
