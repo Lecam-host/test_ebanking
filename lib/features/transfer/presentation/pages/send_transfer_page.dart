@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:test_ebanking/core/failure.dart';
@@ -11,8 +10,10 @@ import 'package:test_ebanking/features/auth/presentation/auth_providers.dart';
 import 'package:test_ebanking/features/auth/presentation/pages/pin_pages.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer_request.dart';
 import 'package:test_ebanking/features/transfer/presentation/formatters.dart';
+import 'package:test_ebanking/features/transfer/presentation/recent_beneficiaries.dart';
 import 'package:test_ebanking/features/transfer/presentation/send_transfer_notifier.dart';
 import 'package:test_ebanking/features/transfer/presentation/transfer_providers.dart';
+import 'package:test_ebanking/features/transfer/presentation/widgets/transfer_form_view.dart';
 import 'package:test_ebanking/features/transfer/presentation/widgets/transfer_success_view.dart';
 
 /// Ouvre l'écran d'envoi (accueil, historique). Après un transfert accepté,
@@ -129,51 +130,18 @@ class _SendTransferPageState extends ConsumerState<SendTransferPage> {
   }
 
   Widget _form(SendFormState form) {
-    final message = _message(form);
-    // Dernier solde connu, pour information : le serveur vérifie le vrai.
-    final balance = ref.watch(historyProvider).value?.balance;
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Nouveau transfert')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          TextField(
-            controller: _name,
-            decoration: const InputDecoration(labelText: 'Nom du bénéficiaire'),
-          ),
-          TextField(
-            controller: _phone,
-            keyboardType: TextInputType.phone,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            maxLength: 10,
-            decoration: const InputDecoration(
-              labelText: 'Numéro (10 chiffres)',
-            ),
-          ),
-          TextField(
-            controller: _amount,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: InputDecoration(
-              labelText: 'Montant (FCFA)',
-              helperText: balance == null
-                  ? null
-                  : 'Solde disponible : ${formatAmount(balance)}',
-            ),
-          ),
-          if (message != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: Text(message),
-            ),
-          const SizedBox(height: 24),
-          FilledButton(
-            onPressed: () => _notifier.review(_request()),
-            child: const Text('Continuer'),
-          ),
-        ],
-      ),
+    final history = ref.watch(historyProvider).value;
+    return TransferFormView(
+      name: _name,
+      phone: _phone,
+      amount: _amount,
+      senderPhone: ref.watch(currentPhoneProvider) ?? '',
+      // Dernier solde connu, pour information : le serveur vérifie le vrai.
+      balance: history?.balance,
+      beneficiaries: recentBeneficiaries(history?.transfers ?? const []),
+      message: _message(form),
+      onChanged: () => setState(() {}),
+      onContinue: () => _notifier.review(_request()),
     );
   }
 

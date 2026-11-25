@@ -9,6 +9,84 @@ String formatAmount(int amount) {
   return '$grouped FCFA';
 }
 
+/// 25000 → « vingt-cinq mille francs CFA ». Sous le champ du montant : un
+/// zéro de trop se voit tout de suite en toutes lettres.
+///
+/// Orthographe traditionnelle : traits d'union sous cent, « et un »,
+/// « quatre-vingts » et « cents » au pluriel seulement en fin de nombre,
+/// « mille » invariable, « un million de francs ».
+String amountInWords(int amount) {
+  final words = _numberInWords(amount);
+  final currency = amount <= 1 ? 'franc CFA' : 'francs CFA';
+  // « un million de francs », mais « un million cinq cent mille francs ».
+  final of = RegExp(r'(million|milliard)s?$').hasMatch(words) ? 'de ' : '';
+  return '$words $of$currency';
+}
+
+const _units = [
+  'zéro', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', //
+  'neuf', 'dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize',
+];
+
+const _tens = [
+  '', '', 'vingt', 'trente', 'quarante', 'cinquante', 'soixante', //
+];
+
+String _numberInWords(int n) {
+  if (n == 0) return _units[0];
+  final billions = n ~/ 1000000000;
+  final millions = n ~/ 1000000 % 1000;
+  final thousands = n ~/ 1000 % 1000;
+  final rest = n % 1000;
+  return [
+    if (billions > 0)
+      '${_below1000(billions)} milliard${billions > 1 ? 's' : ''}',
+    if (millions > 0)
+      '${_below1000(millions)} million${millions > 1 ? 's' : ''}',
+    if (thousands == 1) 'mille',
+    // Devant « mille », « cents » et « quatre-vingts » perdent leur s.
+    if (thousands > 1) '${_withoutFinalS(_below1000(thousands))} mille',
+    if (rest > 0) _below1000(rest),
+  ].join(' ');
+}
+
+/// « deux cents » → « deux cent », « quatre-vingts » → « quatre-vingt » ;
+/// « trois » garde son s.
+String _withoutFinalS(String words) =>
+    words.endsWith('cents') || words.endsWith('vingts')
+    ? words.substring(0, words.length - 1)
+    : words;
+
+String _below1000(int n) {
+  final hundreds = n ~/ 100;
+  final rest = n % 100;
+  final hundredsWords = switch (hundreds) {
+    0 => null,
+    1 => 'cent',
+    _ => '${_units[hundreds]} cent${rest == 0 ? 's' : ''}',
+  };
+  return [?hundredsWords, if (rest > 0) _below100(rest)].join(' ');
+}
+
+String _below100(int n) {
+  if (n <= 16) return _units[n];
+  if (n < 20) return 'dix-${_units[n - 10]}';
+  final tens = n ~/ 10;
+  final unit = n % 10;
+  return switch (tens) {
+    // 70 à 79 : soixante-dix… ; 90 à 99 : quatre-vingt-dix…
+    7 when n == 71 => 'soixante et onze',
+    7 => 'soixante-${_below100(n - 60)}',
+    9 => 'quatre-vingt-${_below100(n - 80)}',
+    8 => unit == 0 ? 'quatre-vingts' : 'quatre-vingt-${_units[unit]}',
+    _ => switch (unit) {
+      0 => _tens[tens],
+      1 => '${_tens[tens]} et un',
+      _ => '${_tens[tens]}-${_units[unit]}',
+    },
+  };
+}
+
 /// 0701020304 → « 07 01 02 03 04 ».
 String formatPhone(String phone) => [
   for (var i = 0; i < phone.length; i += 2)

@@ -23,6 +23,7 @@ void main() {
     WidgetTester tester,
     FakeSendTransfer sendTransfer, {
     FakeBiometricAuth? biometrics,
+    List<Transfer> history = const [],
   }) {
     // Écran haut : tout le récapitulatif est visible sans défiler.
     tester.view.physicalSize = const Size(800, 2000);
@@ -45,7 +46,7 @@ void main() {
           historyProvider.overrideWith(
             (ref) => Stream.value(
               TransferHistory(
-                transfers: const [],
+                transfers: history,
                 lastSyncedAt: t0,
                 balance: 1000000,
               ),
@@ -71,6 +72,8 @@ void main() {
       find.widgetWithText(TextField, 'Montant (FCFA)'),
       '25000',
     );
+    // « Continuer » ne s'active qu'une fois l'écran redessiné, champs remplis.
+    await tester.pump();
     await tester.tap(find.widgetWithText(FilledButton, 'Continuer'));
     await tester.pumpAndSettle();
   }
@@ -172,5 +175,42 @@ void main() {
     // Pas d'écran précédent dans ce test : le formulaire repart à zéro.
     expect(find.widgetWithText(FilledButton, 'Continuer'), findsOneWidget);
     expect(find.text('Awa Kone'), findsNothing);
+  });
+
+  testWidgets('« Continuer » grisé tant qu\'un champ est vide ; montant '
+      'rappelé en lettres', (tester) async {
+    await pumpPage(tester, FakeSendTransfer());
+    FilledButton continueButton() =>
+        tester.widget(find.widgetWithText(FilledButton, 'Continuer'));
+    expect(continueButton().onPressed, isNull);
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Montant (FCFA)'),
+      '25000',
+    );
+    await tester.pump();
+
+    expect(find.text('vingt-cinq mille francs CFA'), findsOneWidget);
+    expect(continueButton().onPressed, isNull); // nom et numéro manquent
+  });
+
+  testWidgets('un bénéficiaire récent remplit le nom et le numéro', (
+    tester,
+  ) async {
+    await pumpPage(
+      tester,
+      FakeSendTransfer(),
+      history: [localTransfer('k1', TransferStatus.paid)], // vers Awa Kone
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Awa Kone'));
+    await tester.pump();
+
+    final fields = tester.widgetList<TextField>(find.byType(TextField));
+    expect(fields.map((field) => field.controller?.text).take(2), [
+      'Awa Kone',
+      '0701020304',
+    ]);
   });
 }

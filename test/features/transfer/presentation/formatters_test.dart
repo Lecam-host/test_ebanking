@@ -8,6 +8,34 @@ void main() {
     expect(formatAmount(1000000), '1 000 000 FCFA');
   });
 
+  test('montant en lettres, orthographe traditionnelle', () {
+    const cases = {
+      1: 'un franc CFA',
+      21: 'vingt et un francs CFA',
+      71: 'soixante et onze francs CFA',
+      75: 'soixante-quinze francs CFA',
+      80: 'quatre-vingts francs CFA',
+      81: 'quatre-vingt-un francs CFA',
+      91: 'quatre-vingt-onze francs CFA',
+      200: 'deux cents francs CFA',
+      201: 'deux cent un francs CFA',
+      1000: 'mille francs CFA',
+      3000: 'trois mille francs CFA',
+      25000: 'vingt-cinq mille francs CFA',
+      80000: 'quatre-vingt mille francs CFA',
+      200000: 'deux cent mille francs CFA',
+      1000000: 'un million de francs CFA',
+      1500000: 'un million cinq cent mille francs CFA',
+      2000000: 'deux millions de francs CFA',
+      999999:
+          'neuf cent quatre-vingt-dix-neuf mille neuf cent '
+          'quatre-vingt-dix-neuf francs CFA',
+    };
+    cases.forEach((amount, words) {
+      expect(amountInWords(amount), words, reason: '$amount');
+    });
+  });
+
   test('« Mis à jour il y a X » selon la dernière synchro', () {
     final now = DateTime(2026, 11, 23, 12);
 

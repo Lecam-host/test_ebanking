@@ -110,7 +110,11 @@ test/                       même arborescence que lib/
   changer de clé) → empreinte ou code secret → « Confirmer » (`confirm`). Transfert accepté par le serveur (envoyé, en cours, payé) → écran de confirmation du kit
   (`TransferSuccessView`, illustration `assets/images/transfer_success.png`) ; jamais pour un
   transfert incertain. Rouvrir l'écran après un transfert accepté repart d'une nouvelle clé
-  (`openSendTransfer` → `SendTransferNotifier.open`).
+  (`openSendTransfer` → `SendTransferNotifier.open`). Le formulaire (`TransferFormView`) suit
+  l'écran « Transfer » du kit avec nos trois champs : compte et solde, types de transfert (un
+  seul actif), bénéficiaires récents tirés de l'historique (`recentBeneficiaries`), montant en
+  lettres (`amountInWords`). Ses enfants de liste restent fixes (ligne du solde toujours là) :
+  un élément qui apparaît décalerait les champs et ferait perdre la saisie en cours.
 - **Reprise automatique** (`AutoResume`) : au démarrage, au retour du réseau, après un envoi
   accepté (pour le solde), puis toutes les 30 s tant qu'un transfert est incertain ; un seul
   passage à la fois.
