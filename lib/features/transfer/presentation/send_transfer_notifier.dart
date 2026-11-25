@@ -9,11 +9,13 @@ import 'package:test_ebanking/features/transfer/domain/entities/transfer_request
 import 'package:test_ebanking/features/transfer/domain/entities/transfer_status.dart';
 import 'package:test_ebanking/features/transfer/presentation/transfer_providers.dart';
 
-/// État du formulaire d'envoi.
+/// État du parcours d'envoi : formulaire, récapitulatif, puis résultat.
 class SendFormState {
   const SendFormState({
     required this.idempotencyKey,
     this.isSending = false,
+    this.draft,
+    this.verified = false,
     this.sentRequest,
     this.result,
     this.pinError,
@@ -25,17 +27,32 @@ class SendFormState {
   /// Envoi en cours : le bouton est désactivé.
   final bool isSending;
 
+  /// Saisie valide, affichée au récapitulatif, pas encore envoyée.
+  final TransferRequest? draft;
+
+  /// Empreinte reconnue pour ce récapitulatif : « Confirmer » envoie sans
+  /// demander le code secret.
+  final bool verified;
+
   /// Contenu déjà enregistré avec cette clé. Dès qu'il existe, le formulaire
   /// est figé : la même clé ne doit jamais repartir avec un autre contenu.
   final TransferRequest? sentRequest;
 
-  /// Résultat du dernier envoi ; null tant que rien n'est revenu.
+  /// Résultat du dernier envoi (ou de la vérification de la saisie) ; null
+  /// tant que rien n'est revenu.
   final Result<Transfer>? result;
 
   /// Code secret refusé : rien n'a été envoyé.
   final String? pinError;
 
   bool get isLocked => sentRequest != null;
+
+  /// Le récapitulatif s'affiche : avant l'envoi (saisie validée), puis tant
+  /// que le transfert reste à suivre (incertain, refusé).
+  bool get isReviewing => draft != null || isLocked;
+
+  /// Contenu du récapitulatif.
+  TransferRequest? get reviewed => sentRequest ?? draft;
 
   /// « Réessayer » a un sens quand le transfert est incertain, ou quand
   /// l'envoi n'a pas abouti (session expirée, erreur imprévue).
@@ -48,8 +65,8 @@ class SendFormState {
       };
 
   /// Transfert accepté par le serveur (envoyé, en cours, payé) : l'écran de
-  /// confirmation remplace le formulaire. Jamais pour un transfert incertain :
-  /// on n'annonce pas un succès que le serveur n'a pas confirmé.
+  /// confirmation remplace le récapitulatif. Jamais pour un transfert
+  /// incertain : on n'annonce pas un succès que le serveur n'a pas confirmé.
   Transfer? get accepted => switch (result) {
     Ok(:final value)
         when value.status == TransferStatus.submitted ||
@@ -70,20 +87,57 @@ class SendTransferNotifier extends Notifier<SendFormState> {
     return _newForm();
   }
 
-  /// Envoi depuis le formulaire : le code secret est demandé à chaque fois,
-  /// comme dans les apps de paiement de la région. Un téléphone volé
-  /// déverrouillé ne suffit donc pas pour envoyer de l'argent.
-  Future<void> send(TransferRequest request, {required String pin}) async {
-    // Un double appui arrive avant que le bouton soit redessiné désactivé :
-    // c'est ici qu'il est arrêté.
-    if (state.isSending) return;
-    _setSending();
-    if (!await _pinAccepted(pin)) return;
-    // Formulaire figé : on renvoie toujours le contenu déjà enregistré.
-    await _submit(state.sentRequest ?? request);
+  /// « Continuer » : vérifie la saisie avec les règles du domaine, puis
+  /// passe au récapitulatif. Rien n'est écrit ni envoyé à cette étape.
+  void review(TransferRequest request) {
+    if (state.isSending || state.isLocked) return;
+    final errors = request.validate(senderPhone: _senderPhone);
+    state = SendFormState(
+      idempotencyKey: state.idempotencyKey,
+      draft: errors.isEmpty ? request : null,
+      result: errors.isEmpty ? null : Err(ValidationFailure(errors)),
+    );
   }
 
-  /// « Réessayer » : même clé, même contenu. Le code secret a déjà été donné
+  /// Retour du récapitulatif au formulaire, tant que rien n'est parti. Même
+  /// clé : elle n'a encore servi à rien.
+  void editDraft() {
+    if (state.isSending || state.isLocked) return;
+    state = SendFormState(idempotencyKey: state.idempotencyKey);
+  }
+
+  /// Empreinte demandée sur le récapitulatif. Reconnue : « Confirmer »
+  /// s'active. Refusée ou annulée (`false`) : l'écran propose le code secret.
+  Future<bool> verifyWithBiometrics(String reason) async {
+    final draft = state.draft;
+    if (state.isSending || draft == null) return false;
+    final ok = await ref.read(biometricAuthProvider).authenticate(reason);
+    // Le client a pu quitter le récapitulatif entre-temps.
+    if (!ref.mounted || state.draft != draft) return false;
+    state = SendFormState(
+      idempotencyKey: state.idempotencyKey,
+      draft: draft,
+      verified: ok,
+    );
+    return ok;
+  }
+
+  /// « Confirmer » sur le récapitulatif. Sans empreinte reconnue, le code
+  /// secret est exigé, comme dans les apps de paiement de la région : un
+  /// téléphone volé déverrouillé ne suffit pas pour envoyer de l'argent.
+  Future<void> confirm({String? pin}) async {
+    final draft = state.draft;
+    // Un double appui arrive avant que le bouton soit redessiné désactivé :
+    // c'est ici qu'il est arrêté.
+    if (state.isSending || state.isLocked || draft == null) return;
+    final verified = state.verified;
+    if (!verified && pin == null) return;
+    _setSending();
+    if (!verified && !await _pinAccepted(pin!)) return;
+    await _submit(draft);
+  }
+
+  /// « Réessayer » : même clé, même contenu. Le client s'est déjà vérifié
   /// pour CE transfert.
   Future<void> retry() async {
     final sent = state.sentRequest;
@@ -105,9 +159,15 @@ class SendTransferNotifier extends Notifier<SendFormState> {
     if (state.accepted != null) startNew();
   }
 
+  /// Client connecté : on n'arrive ici qu'avec une session déverrouillée.
+  /// Sans numéro, la règle reste vérifiée par le serveur (`self_transfer`).
+  String get _senderPhone => ref.read(currentPhoneProvider) ?? '';
+
   void _setSending() => state = SendFormState(
     idempotencyKey: state.idempotencyKey,
     isSending: true,
+    draft: state.draft,
+    verified: state.verified,
     sentRequest: state.sentRequest,
     result: state.result,
   );
@@ -121,6 +181,7 @@ class SendTransferNotifier extends Notifier<SendFormState> {
       case PinRejected(:final remainingAttempts):
         state = SendFormState(
           idempotencyKey: state.idempotencyKey,
+          draft: state.draft,
           sentRequest: state.sentRequest,
           result: state.result,
           pinError:
@@ -142,15 +203,13 @@ class SendTransferNotifier extends Notifier<SendFormState> {
       final result = await ref.read(sendTransferProvider)(
         toSend,
         key,
-        // Client connecté : on n'arrive ici qu'avec une session déverrouillée.
-        // Sans numéro, la règle reste vérifiée par le serveur (self_transfer).
-        senderPhone: ref.read(currentPhoneProvider) ?? '',
+        senderPhone: _senderPhone,
       );
       if (!ref.mounted) return;
       state = SendFormState(
         idempotencyKey: key,
-        // Saisie invalide : rien n'a été enregistré, le formulaire reste
-        // modifiable (avec la même clé, encore jamais utilisée).
+        // Saisie invalide : rien n'a été enregistré, retour au formulaire
+        // (avec la même clé, encore jamais utilisée).
         sentRequest: switch (result) {
           Err(failure: ValidationFailure()) => null,
           _ => toSend,

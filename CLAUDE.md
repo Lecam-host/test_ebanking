@@ -83,6 +83,10 @@ test/                       même arborescence que lib/
 - **Code secret** : vérifié sur le téléphone (l'historique doit s'ouvrir en mode avion), gardé en
   empreinte SHA-256 salée ; 5 essais ratés → déconnexion. Déconnexion (`SignOut`) : transferts,
   PIN et session effacés du téléphone, puis révocation côté serveur.
+- **Empreinte** (`local_auth` 3, port `BiometricAuth`) : vérifie un envoi à la place du code
+  secret, `biometricOnly` (pas de repli sur le code du téléphone). Refusée, annulée ou absente :
+  le code secret de l'app. Android : `FlutterFragmentActivity`, permission `USE_BIOMETRIC`,
+  `LaunchTheme` parent AppCompat ; iOS : `NSFaceIDUsageDescription`.
 - **Notifications (FCM)** : firebase_messaging 17, inscription par identifiant d'installation
   (FID : `register()` / `onRegistered`, `getToken` est déprécié). Le FID est envoyé au serveur
   (`POST /devices`) et rattaché à la session : une session révoquée ne reçoit plus rien.
@@ -101,7 +105,9 @@ test/                       même arborescence que lib/
   (`overrides` du `ProviderScope`), les tests y branchent des faux.
 - **Formulaire d'envoi** : `SendTransferNotifier` sans autoDispose (quitter l'écran ne crée pas
   de nouvelle clé) ; une clé par formulaire, figé dès qu'un transfert est enregistré.
-  Transfert accepté par le serveur (envoyé, en cours, payé) → écran de confirmation du kit
+  Parcours sur la même route `/send` : formulaire → « Continuer » (`review`, saisie vérifiée par
+  `TransferRequest.validate`) → récapitulatif « Confirm » du kit (`draft`, retour possible sans
+  changer de clé) → empreinte ou code secret → « Confirmer » (`confirm`). Transfert accepté par le serveur (envoyé, en cours, payé) → écran de confirmation du kit
   (`TransferSuccessView`, illustration `assets/images/transfer_success.png`) ; jamais pour un
   transfert incertain. Rouvrir l'écran après un transfert accepté repart d'une nouvelle clé
   (`openSendTransfer` → `SendTransferNotifier.open`).

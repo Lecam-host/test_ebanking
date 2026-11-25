@@ -48,6 +48,7 @@ dependencies:
   firebase_messaging: ^17.1.0
   pretty_dio_logger: ^1.4.0
   flutter_svg: ^2.5.0
+  local_auth: ^3.0.2
 
 dev_dependencies:
   flutter_test:

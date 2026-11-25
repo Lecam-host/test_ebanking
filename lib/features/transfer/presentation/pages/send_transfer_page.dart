@@ -3,7 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:test_ebanking/core/failure.dart';
+import 'package:test_ebanking/core/presentation/app_colors.dart';
+import 'package:test_ebanking/core/presentation/light_app_bar.dart';
 import 'package:test_ebanking/core/result.dart';
+import 'package:test_ebanking/features/auth/presentation/auth_notifier.dart';
+import 'package:test_ebanking/features/auth/presentation/auth_providers.dart';
 import 'package:test_ebanking/features/auth/presentation/pages/pin_pages.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer_request.dart';
 import 'package:test_ebanking/features/transfer/presentation/formatters.dart';
@@ -18,11 +22,14 @@ void openSendTransfer(BuildContext context, WidgetRef ref) {
   context.push('/send');
 }
 
-/// Formulaire d'envoi. La validation n'est faite qu'une fois, dans le domaine
-/// (SendTransfer) : l'écran affiche ses messages au lieu de la dupliquer.
+/// Parcours d'envoi, en trois vues sur la même route :
+/// 1. le formulaire (« Continuer » vérifie la saisie dans le domaine) ;
+/// 2. le récapitulatif « Confirm » du kit, vérifié par empreinte ou code
+///    secret ;
+/// 3. la confirmation « Transfert envoyé », une fois le serveur d'accord.
 ///
-/// Une fois le transfert accepté par le serveur, il laisse la place à
-/// l'écran de confirmation du kit.
+/// La validation n'est écrite qu'une fois, dans le domaine : l'écran affiche
+/// ses messages au lieu de la dupliquer.
 class SendTransferPage extends ConsumerStatefulWidget {
   const SendTransferPage({super.key});
 
@@ -36,12 +43,16 @@ class _SendTransferPageState extends ConsumerState<SendTransferPage> {
   final _amount = TextEditingController();
   final _pin = TextEditingController();
 
+  /// Code secret à la place de l'empreinte : empreinte refusée ou annulée,
+  /// ou choix du client.
+  var _usePin = false;
+
   @override
   void initState() {
     super.initState();
-    // Retour sur un formulaire déjà envoyé : on réaffiche son contenu figé.
-    final sent = ref.read(sendTransferNotifierProvider).sentRequest;
-    if (sent != null) _fill(sent);
+    // Retour sur un transfert en cours : on réaffiche son contenu.
+    final shown = ref.read(sendTransferNotifierProvider).reviewed;
+    if (shown != null) _fill(shown);
   }
 
   @override
@@ -52,6 +63,9 @@ class _SendTransferPageState extends ConsumerState<SendTransferPage> {
     _pin.dispose();
     super.dispose();
   }
+
+  SendTransferNotifier get _notifier =>
+      ref.read(sendTransferNotifierProvider.notifier);
 
   void _fill(TransferRequest request) {
     _name.text = request.recipientName;
@@ -67,18 +81,27 @@ class _SendTransferPageState extends ConsumerState<SendTransferPage> {
   );
 
   void _startNew() {
-    ref.read(sendTransferNotifierProvider.notifier).startNew();
+    _notifier.startNew();
     _name.clear();
     _phone.clear();
     _amount.clear();
     _pin.clear();
+    setState(() => _usePin = false);
   }
 
-  void _send() {
-    final pin = _pin.text;
+  Future<void> _verifyFingerprint(TransferRequest request) async {
+    final recognized = await _notifier.verifyWithBiometrics(
+      'Confirmez l\'envoi de ${formatAmount(request.amount)} '
+      'à ${request.recipientName}',
+    );
+    if (!recognized && mounted) setState(() => _usePin = true);
+  }
+
+  void _confirm({required bool verified}) {
+    final pin = verified ? null : _pin.text;
     // Le code secret ne reste pas affiché, même masqué.
     _pin.clear();
-    ref.read(sendTransferNotifierProvider.notifier).send(_request(), pin: pin);
+    _notifier.confirm(pin: pin);
   }
 
   /// « Terminer » : retour à l'écran précédent ; la prochaine ouverture
@@ -92,12 +115,20 @@ class _SendTransferPageState extends ConsumerState<SendTransferPage> {
   @override
   Widget build(BuildContext context) {
     final form = ref.watch(sendTransferNotifierProvider);
+    // Demandé dès le formulaire : la réponse est prête au récapitulatif.
+    final canUseFingerprint =
+        ref.watch(biometricAvailableProvider).value ?? false;
+
     final accepted = form.accepted;
     if (accepted != null) {
       return TransferSuccessView(transfer: accepted, onDone: _finish);
     }
-    final notifier = ref.read(sendTransferNotifierProvider.notifier);
-    final editable = !form.isLocked && !form.isSending;
+    final reviewed = form.reviewed;
+    if (reviewed != null) return _review(form, reviewed, canUseFingerprint);
+    return _form(form);
+  }
+
+  Widget _form(SendFormState form) {
     final message = _message(form);
     // Dernier solde connu, pour information : le serveur vérifie le vrai.
     final balance = ref.watch(historyProvider).value?.balance;
@@ -109,12 +140,10 @@ class _SendTransferPageState extends ConsumerState<SendTransferPage> {
         children: [
           TextField(
             controller: _name,
-            enabled: editable,
             decoration: const InputDecoration(labelText: 'Nom du bénéficiaire'),
           ),
           TextField(
             controller: _phone,
-            enabled: editable,
             keyboardType: TextInputType.phone,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             maxLength: 10,
@@ -124,7 +153,6 @@ class _SendTransferPageState extends ConsumerState<SendTransferPage> {
           ),
           TextField(
             controller: _amount,
-            enabled: editable,
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             decoration: InputDecoration(
@@ -134,41 +162,122 @@ class _SendTransferPageState extends ConsumerState<SendTransferPage> {
                   : 'Solde disponible : ${formatAmount(balance)}',
             ),
           ),
-          if (!form.isLocked) ...[
-            PinField(
-              controller: _pin,
-              label: 'Code secret',
-              enabled: !form.isSending,
-            ),
-            if (form.pinError != null) Text(form.pinError!),
-            const SizedBox(height: 16),
-            FilledButton(
-              // null = désactivé pendant l'envoi.
-              onPressed: form.isSending ? null : _send,
-              child: Text(form.isSending ? 'Envoi en cours…' : 'Envoyer'),
-            ),
-          ],
           if (message != null)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.only(top: 16),
               child: Text(message),
             ),
-          if (form.canRetry)
-            OutlinedButton(
-              onPressed: form.isSending ? null : notifier.retry,
-              child: Text(form.isSending ? 'Envoi en cours…' : 'Réessayer'),
-            ),
-          if (form.isLocked) ...[
-            TextButton(
-              onPressed: () => context.go('/transfers/${form.idempotencyKey}'),
-              child: const Text('Voir le détail'),
-            ),
-            TextButton(
-              onPressed: form.isSending ? null : _startNew,
-              child: const Text('Nouveau transfert'),
-            ),
-          ],
+          const SizedBox(height: 24),
+          FilledButton(
+            onPressed: () => _notifier.review(_request()),
+            child: const Text('Continuer'),
+          ),
         ],
+      ),
+    );
+  }
+
+  /// Récapitulatif « Confirm » du kit, puis suivi tant que le transfert
+  /// n'est pas confirmé par le serveur.
+  Widget _review(
+    SendFormState form,
+    TransferRequest request,
+    bool canUseFingerprint,
+  ) {
+    final message = _message(form);
+    final askPin = !canUseFingerprint || _usePin;
+    final canConfirm =
+        !form.isSending && (form.verified || (askPin && _pin.text.length == 4));
+    final phone = ref.watch(currentPhoneProvider) ?? '';
+
+    return PopScope(
+      // Avant l'envoi, « retour » ramène au formulaire au lieu de quitter.
+      canPop: form.isLocked,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _notifier.editDraft();
+      },
+      child: Scaffold(
+        appBar: lightAppBar('Confirmation'),
+        body: ListView(
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+          children: [
+            const _SectionLabel('Vérifiez les informations du transfert'),
+            _ReadOnlyField('De', maskPhone(phone)),
+            _ReadOnlyField('À', request.recipientName),
+            _ReadOnlyField(
+              'Numéro du bénéficiaire',
+              formatPhone(request.recipientPhone),
+            ),
+            // Le serveur simulé ne prend aucun frais.
+            _ReadOnlyField('Frais', formatAmount(0)),
+            _ReadOnlyField('Montant', formatAmount(request.amount)),
+            if (!form.isLocked) ...[
+              _SectionLabel(
+                askPin
+                    ? 'Confirmez avec votre code secret'
+                    : 'Confirmez avec votre empreinte',
+              ),
+              if (askPin)
+                PinField(
+                  controller: _pin,
+                  label: 'Code secret',
+                  enabled: !form.isSending,
+                  // Le bouton s'active au 4e chiffre.
+                  onChanged: (_) => setState(() {}),
+                )
+              else ...[
+                _Fingerprint(
+                  recognized: form.verified,
+                  onTap: form.isSending || form.verified
+                      ? null
+                      : () => _verifyFingerprint(request),
+                ),
+                if (!form.verified)
+                  TextButton(
+                    onPressed: () => setState(() => _usePin = true),
+                    child: const Text('Utiliser le code secret'),
+                  ),
+              ],
+              if (form.pinError != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    form.pinError!,
+                    style: const TextStyle(color: AppColors.red),
+                  ),
+                ),
+              const SizedBox(height: 24),
+              FilledButton(
+                // null = désactivé : pas encore vérifié, ou envoi en cours.
+                onPressed: canConfirm
+                    ? () => _confirm(verified: form.verified)
+                    : null,
+                child: Text(form.isSending ? 'Envoi en cours…' : 'Confirmer'),
+              ),
+            ],
+            if (message != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Text(message),
+              ),
+            if (form.canRetry)
+              OutlinedButton(
+                onPressed: form.isSending ? null : _notifier.retry,
+                child: Text(form.isSending ? 'Envoi en cours…' : 'Réessayer'),
+              ),
+            if (form.isLocked) ...[
+              TextButton(
+                onPressed: () =>
+                    context.go('/transfers/${form.idempotencyKey}'),
+                child: const Text('Voir le détail'),
+              ),
+              TextButton(
+                onPressed: form.isSending ? null : _startNew,
+                child: const Text('Nouveau transfert'),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -192,4 +301,92 @@ class _SendTransferPageState extends ConsumerState<SendTransferPage> {
       'Session expirée : reconnectez-vous puis réessayez.',
     Err() => 'Envoi impossible pour le moment.',
   };
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 16, bottom: 12),
+    child: Text(
+      text,
+      style: const TextStyle(
+        color: Color(0xFF909090),
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  );
+}
+
+/// Ligne du récapitulatif : libellé gris, valeur dans un cadre arrondi.
+class _ReadOnlyField extends StatelessWidget {
+  const _ReadOnlyField(this.label, this.value);
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 16),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFF909090),
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          decoration: BoxDecoration(
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Text(
+            value,
+            style: const TextStyle(color: AppColors.text, fontSize: 16),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Empreinte du kit : lavande tant qu'elle n'est pas vérifiée, indigo une
+/// fois reconnue.
+class _Fingerprint extends StatelessWidget {
+  const _Fingerprint({required this.recognized, required this.onTap});
+
+  final bool recognized;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      IconButton(
+        tooltip: 'Vérifier mon empreinte',
+        iconSize: 80,
+        onPressed: onTap,
+        icon: Icon(
+          Icons.fingerprint,
+          color: recognized
+              ? AppColors.primary
+              : AppColors.primaryLight.withValues(alpha: 0.55),
+        ),
+      ),
+      Text(
+        recognized ? 'Empreinte reconnue' : 'Touchez pour vérifier',
+        style: const TextStyle(color: Color(0xFF909090), fontSize: 13),
+      ),
+    ],
+  );
 }

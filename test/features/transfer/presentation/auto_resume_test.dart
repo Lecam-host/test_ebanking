@@ -136,14 +136,16 @@ void main() {
     expect(resume.calls, 1); // session déjà ouverte au démarrage
     final form = container.read(sendTransferNotifierProvider.notifier);
 
-    await form.send(validRequest, pin: '1234'); // accepté : submitted
+    form.review(validRequest);
+    await form.confirm(pin: '1234'); // accepté : submitted
     await pumpEventQueue();
     expect(resume.calls, 2);
 
     form.startNew();
     sendTransfer.respond = (_, key) async =>
         Ok(localTransfer(key, TransferStatus.unknownOutcome));
-    await form.send(validRequest, pin: '1234');
+    form.review(validRequest);
+    await form.confirm(pin: '1234');
     await pumpEventQueue();
     expect(resume.calls, 2);
   });

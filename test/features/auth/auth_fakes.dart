@@ -4,6 +4,7 @@ import 'package:test_ebanking/core/result.dart';
 import 'package:test_ebanking/features/auth/domain/entities/pin_check.dart';
 import 'package:test_ebanking/features/auth/domain/entities/session.dart';
 import 'package:test_ebanking/features/auth/domain/ports/auth_repository.dart';
+import 'package:test_ebanking/features/auth/domain/ports/biometric_auth.dart';
 import 'package:test_ebanking/features/auth/domain/ports/pin_store.dart';
 import 'package:test_ebanking/features/auth/domain/ports/session_store.dart';
 import 'package:test_ebanking/features/auth/domain/usecases/pin_lock.dart';
@@ -151,5 +152,23 @@ class FixedAuthNotifier extends AuthNotifier {
   Future<void> signOut({String? message}) async {
     signOutMessages.add(message);
     state = AuthState(AuthStatus.signedOut, message: message);
+  }
+}
+
+/// Empreinte simulée : [recognized] décide de la réponse du « système ».
+class FakeBiometricAuth implements BiometricAuth {
+  FakeBiometricAuth({this.available = true, this.recognized = true});
+
+  bool available;
+  bool recognized;
+  final reasons = <String>[];
+
+  @override
+  Future<bool> isAvailable() async => available;
+
+  @override
+  Future<bool> authenticate(String reason) async {
+    reasons.add(reason);
+    return recognized;
   }
 }

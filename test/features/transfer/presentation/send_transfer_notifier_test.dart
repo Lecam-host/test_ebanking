@@ -5,6 +5,7 @@ import 'package:test_ebanking/core/result.dart';
 import 'package:test_ebanking/features/auth/domain/entities/pin_check.dart';
 import 'package:test_ebanking/features/auth/presentation/auth_notifier.dart';
 import 'package:test_ebanking/features/auth/presentation/auth_providers.dart';
+import 'package:test_ebanking/features/transfer/domain/entities/transfer.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer_request.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer_status.dart';
 import 'package:test_ebanking/features/transfer/presentation/send_transfer_notifier.dart';
@@ -17,24 +18,31 @@ import 'presentation_fakes.dart';
 void main() {
   late FakeSendTransfer sendTransfer;
   late FakePinLock pinLock;
+  late FakeBiometricAuth biometrics;
   late FixedAuthNotifier auth;
   late ProviderContainer container;
 
   SendTransferNotifier notifier() =>
       container.read(sendTransferNotifierProvider.notifier);
   SendFormState form() => container.read(sendTransferNotifierProvider);
-  Future<void> send(TransferRequest request) =>
-      notifier().send(request, pin: '1234');
+
+  /// « Continuer », puis « Confirmer » avec le code secret.
+  Future<void> send(TransferRequest request) async {
+    notifier().review(request);
+    await notifier().confirm(pin: '1234');
+  }
 
   void setUpWith(FakeSendTransfer fake) {
     sendTransfer = fake;
     pinLock = FakePinLock();
+    biometrics = FakeBiometricAuth();
     auth = FixedAuthNotifier(AuthStatus.unlocked);
     container = ProviderContainer.test(
       overrides: [
         sendTransferProvider.overrideWithValue(fake),
         idGeneratorProvider.overrideWithValue(SequentialIdGenerator()),
         pinLockProvider.overrideWithValue(pinLock),
+        biometricAuthProvider.overrideWithValue(biometrics),
         authNotifierProvider.overrideWith(() => auth),
         currentPhoneProvider.overrideWithValue('0700000001'),
       ],
@@ -58,7 +66,7 @@ void main() {
     expect(sendTransfer.senders, everyElement('0700000001'));
   });
 
-  test('formulaire figé : un contenu modifié ne repart pas avec la même '
+  test('transfert enregistré : un contenu modifié ne repart pas avec la même '
       'clé', () async {
     setUpWith(
       FakeSendTransfer(
@@ -75,26 +83,74 @@ void main() {
       ),
     );
 
-    expect(sendTransfer.requests, everyElement(same(validRequest)));
+    expect(sendTransfer.requests, [same(validRequest)]);
+    expect(form().reviewed, same(validRequest));
   });
 
-  test('saisie invalide : formulaire modifiable, et la même clé sert à '
-      'l\'envoi suivant', () async {
-    setUpWith(
-      FakeSendTransfer(
-        (_, _) async => const Err(ValidationFailure(['Montant invalide'])),
+  test('saisie invalide → on reste sur le formulaire, rien n\'est envoyé, et '
+      'la même clé sert ensuite', () async {
+    setUpWith(FakeSendTransfer());
+
+    notifier().review(
+      const TransferRequest(
+        amount: 0,
+        recipientName: 'Awa Kone',
+        recipientPhone: '0701020304',
       ),
     );
 
-    await send(validRequest);
-    expect(form().isLocked, isFalse);
+    expect(form().isReviewing, isFalse);
+    expect(
+      form().result,
+      isA<Err<Transfer>>().having(
+        (err) => err.failure,
+        'failure',
+        isA<ValidationFailure>(),
+      ),
+    );
+    expect(sendTransfer.keys, isEmpty);
 
-    sendTransfer.respond = (_, key) async =>
-        Ok(localTransfer(key, TransferStatus.submitted));
     await send(validRequest);
+    expect(sendTransfer.keys, ['key-1']);
+  });
 
-    expect(sendTransfer.keys, ['key-1', 'key-1']);
-    expect(form().isLocked, isTrue);
+  test('retour du récapitulatif au formulaire : même clé, rien n\'est '
+      'parti', () async {
+    setUpWith(FakeSendTransfer());
+    notifier().review(validRequest);
+    expect(form().isReviewing, isTrue);
+
+    notifier().editDraft();
+
+    expect(form().isReviewing, isFalse);
+    expect(form().idempotencyKey, 'key-1');
+    expect(sendTransfer.keys, isEmpty);
+  });
+
+  test('empreinte reconnue → « Confirmer » envoie sans code secret', () async {
+    setUpWith(FakeSendTransfer());
+    notifier().review(validRequest);
+
+    expect(await notifier().verifyWithBiometrics('Confirmez'), isTrue);
+    expect(form().verified, isTrue);
+    await notifier().confirm();
+
+    expect(sendTransfer.keys, ['key-1']);
+    expect(pinLock.checked, isEmpty);
+  });
+
+  test('empreinte refusée → rien ne part sans le code secret', () async {
+    setUpWith(FakeSendTransfer());
+    biometrics.recognized = false;
+    notifier().review(validRequest);
+
+    expect(await notifier().verifyWithBiometrics('Confirmez'), isFalse);
+    await notifier().confirm(); // ni empreinte, ni code : ignoré
+    expect(sendTransfer.keys, isEmpty);
+
+    await notifier().confirm(pin: '1234');
+    expect(pinLock.checked, ['1234']);
+    expect(sendTransfer.keys, ['key-1']);
   });
 
   test('« Nouveau transfert » crée une nouvelle clé', () async {
@@ -116,6 +172,7 @@ void main() {
     expect(sendTransfer.keys, isEmpty);
     expect(form().pinError, contains('3'));
     expect(form().isSending, isFalse);
+    expect(form().isReviewing, isTrue); // on reste sur le récapitulatif
   });
 
   test('trop de codes ratés → déconnexion, et rien n\'est envoyé', () async {

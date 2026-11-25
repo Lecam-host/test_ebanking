@@ -34,12 +34,9 @@ class SendTransfer {
     required String senderPhone,
   }) async {
     // 1. Saisie invalide, ou envoi à soi-même : rien n'est écrit, aucun appel
-    //    réseau. Le serveur refuse aussi l'envoi à soi-même (self_transfer).
-    final errors = [
-      ...request.validate(),
-      if (request.recipientPhone == senderPhone)
-        'Vous ne pouvez pas vous envoyer de l\'argent.',
-    ];
+    //    réseau. Le formulaire a déjà vérifié avant le récapitulatif ; on
+    //    revérifie ici, car c'est le domaine qui garantit la règle.
+    final errors = request.validate(senderPhone: senderPhone);
     if (errors.isNotEmpty) return Err(ValidationFailure(errors));
 
     // 2. Clé déjà connue (double appui, « Réessayer ») : pas de deuxième transfert.

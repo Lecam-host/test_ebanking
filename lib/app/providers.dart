@@ -4,11 +4,13 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:test_ebanking/core/config.dart';
 import 'package:test_ebanking/core/data/dio_client.dart';
 import 'package:test_ebanking/features/auth/data/auth_api.dart';
 import 'package:test_ebanking/features/auth/data/auth_interceptor.dart';
 import 'package:test_ebanking/features/auth/data/auth_repository_impl.dart';
+import 'package:test_ebanking/features/auth/data/local_biometric_auth.dart';
 import 'package:test_ebanking/features/auth/data/pin_store_impl.dart';
 import 'package:test_ebanking/features/auth/data/session_store_impl.dart';
 import 'package:test_ebanking/features/auth/presentation/auth_providers.dart';
@@ -32,6 +34,9 @@ List<Override> appOverrides(TransferDatabase database) {
     ),
     sessionStoreProvider.overrideWithValue(SessionStoreImpl(secureStorage)),
     pinStoreProvider.overrideWithValue(PinStoreImpl(secureStorage)),
+    biometricAuthProvider.overrideWithValue(
+      LocalBiometricAuth(LocalAuthentication()),
+    ),
     transferRepositoryProvider.overrideWith(
       (ref) => TransferRepositoryImpl(TransferApi(ref.watch(_apiDioProvider))),
     ),

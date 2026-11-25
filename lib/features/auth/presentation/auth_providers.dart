@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:test_ebanking/features/auth/domain/ports/auth_repository.dart';
+import 'package:test_ebanking/features/auth/domain/ports/biometric_auth.dart';
 import 'package:test_ebanking/features/auth/domain/ports/pin_store.dart';
 import 'package:test_ebanking/features/auth/domain/ports/session_store.dart';
 import 'package:test_ebanking/features/auth/domain/usecases/pin_lock.dart';
@@ -23,6 +24,15 @@ final sessionStoreProvider = Provider<SessionStore>(
 
 final pinStoreProvider = Provider<PinStore>(
   (ref) => throw UnimplementedError(_wiredInApp),
+);
+
+final biometricAuthProvider = Provider<BiometricAuth>(
+  (ref) => throw UnimplementedError(_wiredInApp),
+);
+
+/// Empreinte possible sur ce téléphone ? Sinon, le code secret directement.
+final biometricAvailableProvider = FutureProvider<bool>(
+  (ref) => ref.watch(biometricAuthProvider).isAvailable(),
 );
 
 /// Une seule instance pour toute l'app : elle tient le jeton d'accès en

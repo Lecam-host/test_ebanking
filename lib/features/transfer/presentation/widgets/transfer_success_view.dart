@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:test_ebanking/core/presentation/app_colors.dart';
+import 'package:test_ebanking/core/presentation/light_app_bar.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer.dart';
 import 'package:test_ebanking/features/transfer/presentation/formatters.dart';
 
@@ -20,21 +21,7 @@ class TransferSuccessView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    // Barre blanche et titre foncé, comme la maquette (les autres écrans
-    // gardent la barre indigo du thème).
-    appBar: AppBar(
-      backgroundColor: Colors.white,
-      foregroundColor: AppColors.text,
-      surfaceTintColor: Colors.transparent,
-      title: const Text(
-        'Confirmation',
-        style: TextStyle(
-          color: AppColors.text,
-          fontSize: 24,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    ),
+    appBar: lightAppBar('Confirmation'),
     body: ListView(
       padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
       children: [
