@@ -21,6 +21,10 @@ Stack : Flutter 3.47 (Dart 3), Riverpod 3 sans génération de code, Dio, Drift 
 flutter_secure_storage, go_router, firebase_messaging, local_auth. Interface d'après le kit
 Figma « ibank / finpay ».
 
+**Vidéo de démonstration** (2 min 50, émulateur Android) : [`docs/demo.mp4`](docs/demo.mp4).
+Connexion, envoi et notifications, app tuée juste après « Confirmer », serveur qui répond après
+30 s, session expirée, notification avec l'app fermée, téléphone volé.
+
 ## Sommaire
 
 - [Lancer le projet](#lancer-le-projet)
@@ -33,7 +37,7 @@ Figma « ibank / finpay ».
 - [Choix et alternatives écartées](#choix-et-alternatives-écartées)
 - [Risques identifiés et réponses](#risques-identifiés-et-réponses)
 - [Tests](#tests)
-- [Ce qui a été testé sur un vrai téléphone](#ce-qui-a-été-testé-sur-un-vrai-téléphone)
+- [Ce qui a été testé sur appareil](#ce-qui-a-été-testé-sur-appareil)
 - [Limites connues](#limites-connues)
 - [Ce qui manque et comment je le ferais](#ce-qui-manque-et-comment-je-le-ferais)
 
@@ -448,7 +452,39 @@ serveur simulé.
 Les tests d'intégration portent le tag `integration` et sont ignorés par un simple
 `flutter test` (`skip` dans `dart_test.yaml`), car ils ont besoin du serveur.
 
-## Ce qui a été testé sur un vrai téléphone
+## Ce qui a été testé sur appareil
+
+### Sur un émulateur Android 16, filmé dans la vidéo
+
+Émulateur avec les services Google (vraies notifications FCM), en debug, relié au serveur par
+`adb reverse`, le 26/11/2026 :
+
+- connexion par SMS et création du code secret ;
+- envoi validé par le code secret (l'émulateur n'a pas d'empreinte), solde débité ;
+- notification avec l'app ouverte : bandeau et détail mis à jour seuls ; puis en arrière-plan :
+  notification système, l'appui ouvre le détail « Payé » ;
+- app tuée pendant l'envoi, alors que le serveur avait créé le transfert sans répondre.
+  Réouverture en mode avion : déverrouillage hors ligne, historique « Mis à jour il y a 1 min »,
+  transfert « Vérification en cours ». Retour du réseau : « Envoyé », et un seul transfert sur le
+  serveur. Le mode avion ne coupe pas le tunnel `adb reverse` : il a été supprimé en même temps,
+  pour couper vraiment l'accès au serveur ;
+- serveur qui répond après 30 s : « Vérification en cours » au bout de 20 s, puis « Réessayer »
+  retrouve le transfert par sa clé, sans doublon ;
+- session expirée : 401 `token_expired`, jeton renouvelé et requête rejouée, sans déconnexion
+  (vu dans le journal de l'app) ;
+- app fermée (processus tué) : la notification arrive, et l'appui ouvre le bon transfert après le
+  code secret ;
+- session révoquée (téléphone volé) : retour à la connexion avec « Votre session a été fermée par
+  sécurité », et plus aucune notification.
+
+Deux défauts vus pendant le tournage, pas encore corrigés :
+
+- le bandeau affiché avec l'app ouverte (« Transfert en cours de traitement ») reste visible au
+  retour dans l'app, alors que le statut est déjà « Payé » ;
+- après une révocation, le rafraîchissement affiche aussi « Serveur injoignable », alors que le
+  serveur a répondu.
+
+### Sur un vrai téléphone
 
 Sur un téléphone Android OPPO (CPH2135), en debug, relié au serveur par `adb reverse`, au
 25/11/2026 :
@@ -462,11 +498,9 @@ Sur un téléphone Android OPPO (CPH2135), en debug, relié au serveur par `adb 
   seconde, bandeau « Transfert payé — Voir » ;
 - installation de la version avec récapitulatif et empreinte, sans plantage au démarrage.
 
-**Pas encore vérifié sur le téléphone**, mais couvert par les tests : app tuée juste après
-« Envoyer », historique en mode avion, session expirée en pleine utilisation, téléphone déclaré
-volé, notification avec l'app fermée, absence de notification après déconnexion, validation par
-empreinte, blocage du portrait, écrans d'historique et de détail refaits d'après le kit
-(vérifiés sur des rendus).
+**Pas encore vérifié sur un appareil**, mais couvert par les tests : validation par empreinte,
+blocage du portrait, déconnexion volontaire puis absence de notification. Les scénarios filmés
+sur l'émulateur restent à rejouer sur le téléphone réel.
 
 iOS : l'app est configurée (Face ID, portrait), mais n'a pas été testée sur un iPhone, et les
 notifications iOS ne sont pas configurées.
@@ -493,13 +527,12 @@ notifications iOS ne sont pas configurées.
 
 ## Ce qui manque et comment je le ferais
 
-- **Captures et vidéo du parcours** : à enregistrer sur le téléphone avec
-  `adb exec-out screencap -p` et `adb shell screenrecord` (envoi, coupure, reprise,
-  notification, téléphone volé).
 - **APK de démo** : `flutter build apk --debug` (le HTTP en clair vers le serveur simulé n'est
   autorisé qu'en debug), à lancer avec `adb reverse tcp:3000 tcp:3000` et le serveur sur le Mac.
-- **Rejouer sur le téléphone** les scénarios encore vérifiés seulement par les tests (liste
-  ci-dessus).
+- **Rejouer sur le téléphone réel** les scénarios filmés sur l'émulateur, et vérifier l'empreinte.
+- **Les deux défauts vus pendant le tournage** : fermer le bandeau de l'app ouverte quand le
+  statut change ou quand l'app passe en arrière-plan ; ne pas afficher d'erreur de synchro quand
+  la session se termine.
 - **Notifications iOS** : clé APNs dans la console Firebase, capacité Push Notifications et
   Background Modes dans Xcode.
 - **Mise en production** : vrai fournisseur de SMS, HTTPS, routes `/admin` retirées, version
