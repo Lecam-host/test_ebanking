@@ -21,7 +21,7 @@ Stack : Flutter 3.47 (Dart 3), Riverpod 3 sans génération de code, Dio, Drift 
 flutter_secure_storage, go_router, firebase_messaging, local_auth. Interface d'après le kit
 Figma « ibank / finpay ».
 
-**Vidéo de démonstration** (2 min 50, émulateur Android) : [`docs/demo.mp4`](docs/demo.mp4).
+**Vidéo de démonstration** (2 min 40, émulateur Android) : [`docs/demo.mp4`](docs/demo.mp4).
 Connexion, envoi et notifications, app tuée juste après « Confirmer », serveur qui répond après
 30 s, session expirée, notification avec l'app fermée, téléphone volé.
 
@@ -474,11 +474,11 @@ Les tests d'intégration portent le tag `integration` et sont ignorés par un si
   (vu dans le journal de l'app) ;
 - app fermée (processus tué) : la notification arrive, et l'appui ouvre le bon transfert après le
   code secret ;
-- session révoquée (téléphone volé) : retour à la connexion avec « Votre session a été fermée par
-  sécurité », et plus aucune notification.
+- session révoquée (téléphone volé) : historique effacé du téléphone, retour à la connexion avec
+  « Votre session a été fermée par sécurité », et plus aucune notification.
 
-Deux défauts vus pendant le tournage ont été corrigés depuis, avec des tests, puis revérifiés sur
-l'émulateur. La vidéo les montre encore :
+Deux défauts vus lors d'un premier tournage ont été corrigés, avec des tests, puis la vidéo a été
+refilmée :
 
 - le bandeau affiché avec l'app ouverte restait visible au retour dans l'app, alors que le statut
   était déjà « Payé ». Avec un bouton « Voir », un SnackBar reste affiché par défaut : il
