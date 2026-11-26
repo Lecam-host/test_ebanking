@@ -14,7 +14,8 @@ expliquée et défendue en entretien.
 - **Historique hors ligne** : il s'affiche sans réseau, avec l'heure de sa dernière mise à jour.
 - **Gestion d'état** : Riverpod, sans génération de code.
 - Énoncé officiel : `~/Downloads/Test_technique_Mobile.pdf` (auth, stockage sécurisé, FCM imposé,
-  design Figma, README et diagrammes exigés). Reste à faire : design, documentation.
+  design Figma, README et diagrammes exigés). Reste à faire : captures ou vidéo, APK de
+  démo, scénarios de restitution à rejouer sur le téléphone (voir la fin du `README.md`).
 - **Serveur simulé** : `mock_server/` (Node + Express). `mock_server/server.js` est la
   référence du contrat d'API.
 
