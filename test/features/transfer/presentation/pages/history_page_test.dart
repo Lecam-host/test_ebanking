@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:test_ebanking/core/failure.dart';
 import 'package:test_ebanking/features/auth/presentation/auth_notifier.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer.dart';
 import 'package:test_ebanking/features/transfer/domain/entities/transfer_history.dart';
@@ -10,6 +11,8 @@ import 'package:test_ebanking/features/transfer/presentation/formatters.dart';
 import 'package:test_ebanking/features/transfer/presentation/pages/history_page.dart';
 import 'package:test_ebanking/features/transfer/presentation/pages/transfer_detail_page.dart';
 import 'package:test_ebanking/features/transfer/presentation/transfer_providers.dart';
+
+import '../../domain/fakes.dart';
 
 final now = DateTime(2026, 11, 23, 18);
 
@@ -60,7 +63,10 @@ void main() {
     String location = '/transfers',
     bool online = true,
     DateTime? lastSyncedAt,
+    Failure? syncFailure,
+    List<String>? log,
   }) {
+    log ??= [];
     tester.view.physicalSize = const Size(800, 2000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -93,6 +99,13 @@ void main() {
                 balance: 975000,
               ),
             ),
+          ),
+          // Lus seulement par « tirer pour rafraîchir ».
+          transferRepositoryProvider.overrideWithValue(
+            FakeTransferRepository(log)..historyFailure = syncFailure,
+          ),
+          transferLocalStoreProvider.overrideWithValue(
+            FakeTransferLocalStore(log),
           ),
           isOnlineProvider.overrideWith((ref) => Stream.value(online)),
           nowProvider.overrideWith((ref) => Stream.value(now)),
@@ -185,5 +198,49 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Transfert introuvable'), findsOneWidget);
+  });
+
+  // Il faut tirer plus du quart de la hauteur (2000) pour rafraîchir.
+  Future<void> pullToRefresh(WidgetTester tester) async {
+    await tester.drag(find.byType(ListView), const Offset(0, 800));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('rafraîchir sans réseau : « Serveur injoignable »', (
+    tester,
+  ) async {
+    final log = <String>[];
+    await pumpApp(
+      tester,
+      transfers: history,
+      syncFailure: const NetworkFailure(),
+      log: log,
+    );
+    await tester.pumpAndSettle();
+
+    await pullToRefresh(tester);
+
+    expect(log, ['api.fetchHistory']);
+    expect(
+      find.text('Serveur injoignable : historique enregistré affiché.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('rafraîchir après une révocation : pas de « Serveur '
+      'injoignable », la connexion en donne la raison', (tester) async {
+    final log = <String>[];
+    await pumpApp(
+      tester,
+      transfers: history,
+      syncFailure: const UnauthorizedFailure(),
+      log: log,
+    );
+    await tester.pumpAndSettle();
+
+    await pullToRefresh(tester);
+
+    expect(log, ['api.fetchHistory']);
+    expect(find.byType(SnackBar), findsNothing);
   });
 }

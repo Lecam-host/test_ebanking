@@ -15,8 +15,8 @@ expliquée et défendue en entretien.
 - **Gestion d'état** : Riverpod, sans génération de code.
 - Énoncé officiel : `~/Downloads/Test_technique_Mobile.pdf` (auth, stockage sécurisé, FCM imposé,
   design Figma, README et diagrammes exigés). Vidéo de démo : `docs/demo.mp4`
-  (émulateur). Reste à faire : APK de démo, scénarios à rejouer sur le téléphone, deux défauts
-  vus au tournage (voir la fin du `README.md`).
+  (émulateur). Reste à faire : APK de démo, scénarios à rejouer sur le téléphone
+  (voir la fin du `README.md`).
 - **Serveur simulé** : `mock_server/` (Node + Express). `mock_server/server.js` est la
   référence du contrat d'API.
 
@@ -97,7 +97,9 @@ test/                       même arborescence que lib/
   exige `firebase_messaging_installation_id_enabled` dans `AndroidManifest.xml` : sans cette
   ligne, `onRegistered` ne se déclenche jamais.
   Arrière-plan / app fermée : notification affichée par le système, l'appui ouvre
-  `/transfers/<clé>` (via le déverrouillage). App ouverte : bandeau dans l'app + rafraîchissement.
+  `/transfers/<clé>` (via le déverrouillage). App ouverte : bandeau dans l'app + rafraîchissement
+  (`showPushBanner` : `persist: false`, remplacé par un statut plus récent, effacé en
+  arrière-plan).
   Texte neutre (ni montant ni bénéficiaire) car visible sur l'écran verrouillé.
 - **Outils réseau partagés** : `lib/core/data/` (`createDio`, `failureFromDioException`). Le dossier
   s'appelle `data` pour que le test d'architecture interdise au domaine de l'importer.

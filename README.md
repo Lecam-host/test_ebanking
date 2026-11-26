@@ -434,7 +434,7 @@ projet Firebase : `flutterfire configure`, qui régénère `lib/firebase_options
 
 ## Tests
 
-126 tests unitaires et de widgets (`flutter test`) et 5 tests d'intégration contre le vrai
+131 tests unitaires et de widgets (`flutter test`) et 5 tests d'intégration contre le vrai
 serveur simulé.
 
 | Ce qui est prouvé | Où |
@@ -477,12 +477,15 @@ Les tests d'intégration portent le tag `integration` et sont ignorés par un si
 - session révoquée (téléphone volé) : retour à la connexion avec « Votre session a été fermée par
   sécurité », et plus aucune notification.
 
-Deux défauts vus pendant le tournage, pas encore corrigés :
+Deux défauts vus pendant le tournage ont été corrigés depuis, avec des tests, puis revérifiés sur
+l'émulateur. La vidéo les montre encore :
 
-- le bandeau affiché avec l'app ouverte (« Transfert en cours de traitement ») reste visible au
-  retour dans l'app, alors que le statut est déjà « Payé » ;
-- après une révocation, le rafraîchissement affiche aussi « Serveur injoignable », alors que le
-  serveur a répondu.
+- le bandeau affiché avec l'app ouverte restait visible au retour dans l'app, alors que le statut
+  était déjà « Payé ». Avec un bouton « Voir », un SnackBar reste affiché par défaut : il
+  disparaît maintenant seul, un statut plus récent le remplace, et il est effacé quand l'app
+  passe en arrière-plan ;
+- après une révocation, le rafraîchissement affichait aussi « Serveur injoignable », alors que
+  le serveur avait répondu. Seul l'écran de connexion en donne maintenant la raison.
 
 ### Sur un vrai téléphone
 
@@ -530,9 +533,6 @@ notifications iOS ne sont pas configurées.
 - **APK de démo** : `flutter build apk --debug` (le HTTP en clair vers le serveur simulé n'est
   autorisé qu'en debug), à lancer avec `adb reverse tcp:3000 tcp:3000` et le serveur sur le Mac.
 - **Rejouer sur le téléphone réel** les scénarios filmés sur l'émulateur, et vérifier l'empreinte.
-- **Les deux défauts vus pendant le tournage** : fermer le bandeau de l'app ouverte quand le
-  statut change ou quand l'app passe en arrière-plan ; ne pas afficher d'erreur de synchro quand
-  la session se termine.
 - **Notifications iOS** : clé APNs dans la console Firebase, capacité Push Notifications et
   Background Modes dans Xcode.
 - **Mise en production** : vrai fournisseur de SMS, HTTPS, routes `/admin` retirées, version

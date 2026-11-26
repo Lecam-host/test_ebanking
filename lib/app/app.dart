@@ -7,6 +7,7 @@ import 'package:test_ebanking/core/presentation/app_theme.dart';
 import 'package:test_ebanking/features/auth/presentation/auth_notifier.dart';
 import 'package:test_ebanking/features/push/domain/entities/push_message.dart';
 import 'package:test_ebanking/features/push/presentation/push_activation.dart';
+import 'package:test_ebanking/features/push/presentation/push_banner.dart';
 import 'package:test_ebanking/features/push/presentation/push_providers.dart';
 import 'package:test_ebanking/features/transfer/presentation/auto_resume.dart';
 import 'package:test_ebanking/features/transfer/presentation/transfer_providers.dart';
@@ -29,7 +30,12 @@ class _AppState extends ConsumerState<App> {
     super.initState();
     final auth = ref.read(authNotifierProvider.notifier);
     _lifecycle = AppLifecycleListener(
-      onHide: auth.onHidden,
+      onHide: () {
+        auth.onHidden();
+        // Un bandeau de notification serait périmé au retour : l'écran
+        // affichera de toute façon le statut à jour.
+        _messenger.currentState?.clearSnackBars();
+      },
       onShow: () {
         // Verrouillage après un passage en arrière-plan (voir AuthNotifier).
         auth.onShown();
@@ -67,14 +73,12 @@ class _AppState extends ConsumerState<App> {
   /// et l'historique rafraîchi tout de suite.
   void _showInApp(PushMessage message) {
     ref.read(autoResumeProvider).run();
-    _messenger.currentState?.showSnackBar(
-      SnackBar(
-        content: Text(message.title),
-        action: SnackBarAction(
-          label: 'Voir',
-          onPressed: () => _openTransfer(message.transferKey),
-        ),
-      ),
+    final messenger = _messenger.currentState;
+    if (messenger == null) return;
+    showPushBanner(
+      messenger,
+      message,
+      onOpen: () => _openTransfer(message.transferKey),
     );
   }
 

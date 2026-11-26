@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:test_ebanking/core/failure.dart';
 import 'package:test_ebanking/core/presentation/app_colors.dart';
 import 'package:test_ebanking/core/presentation/light_app_bar.dart';
 import 'package:test_ebanking/core/result.dart';
@@ -134,6 +135,9 @@ class _HistoryListState extends ConsumerState<_HistoryList> {
 
   Future<void> _refresh() async {
     final result = await ref.read(syncHistoryProvider)();
+    // Session terminée (révoquée) : l'app repart sur la connexion, qui en
+    // donne la raison. Parler de serveur injoignable serait faux.
+    if (result case Err(failure: UnauthorizedFailure())) return;
     if (result is Err && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
