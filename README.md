@@ -517,8 +517,7 @@ refilmée :
 | Fichiers de configuration Firebase versionnés | identifiants client, pas des secrets selon Google, mais ils désignent un vrai projet | restreindre la clé d'API dans Google Cloud, ou les générer hors du dépôt |
 | Routes `/admin` sans protection | n'importe qui sur le réseau peut piloter le serveur simulé | normal pour une démo ; absentes d'un vrai serveur |
 | Serveur simulé en mémoire | un redémarrage efface comptes, transferts et sessions | une base de données côté serveur |
-| Poppins Medium (graisse 500) absente | ces textes prennent la graisse la plus proche | ajouter `Poppins-Medium.ttf` |
-| `mocktail` déclaré mais inutilisé | dépendance de développement inutile | le retirer |
+
 
 ## Ce qui manque et comment je le ferais
 
