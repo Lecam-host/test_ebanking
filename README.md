@@ -543,10 +543,8 @@ notifications iOS ne sont pas configurées.
 
 - **APK de démo** : `flutter build apk --debug` (le HTTP en clair vers le serveur simulé n'est
   autorisé qu'en debug), à lancer avec `adb reverse tcp:3000 tcp:3000` et le serveur sur le Mac.
-- **Rejouer sur le téléphone réel** les scénarios filmés sur l'émulateur, et vérifier l'empreinte.
 - **Notifications iOS** : clé APNs dans la console Firebase, capacité Push Notifications et
   Background Modes dans Xcode.
 - **Mise en production** : vrai fournisseur de SMS, HTTPS, routes `/admin` retirées, version
   release signée, sauvegarde Android désactivée.
-- **Les limites simples ci-dessus** : 408 et 429, canal de notification, permission
-  `INTERNET`, Poppins Medium, `mocktail`.
+
