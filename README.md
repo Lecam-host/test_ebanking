@@ -18,8 +18,7 @@ Ce que l'app garantit :
   un appui ouvre le transfert concerné.
 
 Stack : Flutter 3.47 (Dart 3), Riverpod 3 sans génération de code, Dio, Drift + SQLCipher,
-flutter_secure_storage, go_router, firebase_messaging, local_auth. Interface d'après le kit
-Figma « ibank / finpay ».
+flutter_secure_storage, go_router, firebase_messaging, local_auth. 
 
 **Vidéo de démonstration** (2 min 34, émulateur Android) :
 [à regarder sur Google Drive](https://drive.google.com/file/d/1WrCsaJ-MB3LBJ1DwSlpOFV33azGud8xy/view?usp=sharing),
