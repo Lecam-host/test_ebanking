@@ -426,8 +426,6 @@ projet Firebase : `flutterfire configure`, qui régénère `lib/firebase_options
 | Solde tenu par le serveur | solde tenu par l'app | un solde local serait faux après une réinstallation et facile à modifier |
 | Inscription FCM par FID, rattachée à la session | jeton `getToken`, rattaché au numéro | `getToken` est déprécié ; une session révoquée ne doit plus rien recevoir |
 | Faux écrits à la main dans les tests | mocks (`mocktail`) | un faux serveur qui dédoublonne comme le vrai rend les scénarios lisibles |
-| Portrait déclaré dans le manifeste et `Info.plist` | `SystemChrome` en Dart | appliqué dès l'écran de lancement, avant que Flutter démarre |
-| Police Poppins embarquée | `google_fonts` | rien à télécharger en 3G au premier lancement |
 
 ## Risques identifiés et réponses
 
@@ -445,10 +443,6 @@ projet Firebase : `flutterfire configure`, qui régénère `lib/firebase_options
 | HTTP en clair | autorisé seulement par le manifeste Android de debug |
 | Contournement du solde | tenu et vérifié par le serveur, dans le même bloc que le débit |
 
-## Tests
-
-131 tests unitaires et de widgets (`flutter test`) et 5 tests d'intégration contre le vrai
-serveur simulé.
 
 | Ce qui est prouvé | Où |
 |---|---|
@@ -465,7 +459,7 @@ serveur simulé.
 Les tests d'intégration portent le tag `integration` et sont ignorés par un simple
 `flutter test` (`skip` dans `dart_test.yaml`), car ils ont besoin du serveur.
 
-## Ce qui a été testé sur appareil
+
 
 ### Sur un émulateur Android 16, filmé dans la vidéo
 
