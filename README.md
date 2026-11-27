@@ -27,7 +27,6 @@ Connexion, envoi et notifications, app tuée juste après « Confirmer », serve
 
 ### Captures
 
-Tirées de la vidéo, sur un compte de test.
 
 | Connexion | Accueil | Récapitulatif | Transfert envoyé | Bandeau, app ouverte |
 |:-:|:-:|:-:|:-:|:-:|
