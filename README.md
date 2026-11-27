@@ -498,26 +498,7 @@ refilmée :
 - après une révocation, le rafraîchissement affichait aussi « Serveur injoignable », alors que
   le serveur avait répondu. Seul l'écran de connexion en donne maintenant la raison.
 
-### Sur un vrai téléphone
 
-Sur un téléphone Android OPPO (CPH2135), en debug, relié au serveur par `adb reverse`, au
-25/11/2026 :
-
-- connexion par SMS, code secret et envois de transferts ;
-- transferts faits pendant que le serveur était injoignable, terminés seuls par la reprise
-  automatique dès son retour ;
-- notification avec l'app en arrière-plan : affichée par le système, l'appui ouvre le détail du
-  transfert ;
-- notification avec l'app ouverte sur le détail : statut passé à « Payé » en moins d'une
-  seconde, bandeau « Transfert payé — Voir » ;
-- installation de la version avec récapitulatif et empreinte, sans plantage au démarrage.
-
-**Pas encore vérifié sur un appareil**, mais couvert par les tests : validation par empreinte,
-blocage du portrait, déconnexion volontaire puis absence de notification. Les scénarios filmés
-sur l'émulateur restent à rejouer sur le téléphone réel.
-
-iOS : l'app est configurée (Face ID, portrait), mais n'a pas été testée sur un iPhone, et les
-notifications iOS ne sont pas configurées.
 
 ## Limites connues
 
