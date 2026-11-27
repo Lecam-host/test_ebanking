@@ -500,24 +500,6 @@ refilmée :
 
 
 
-## Limites connues
-
-| Limite | Conséquence | Piste |
-|---|---|---|
-| Le serveur oublie une clé d'idempotence après 24 h | un transfert resté incertain plus d'un jour (téléphone éteint) serait recréé par la reprise : seul cas de double envoi possible | ne plus renvoyer seul après 24 h et demander au client |
-| Sauvegarde Android automatique activée | une restauration sur un nouveau téléphone n'a pas la clé du Keystore : le stockage sécurisé échoue (`Failed to unwrap key`) | `android:allowBackup="false"`, comme le recommande flutter_secure_storage |
-| Un 408 ou un 429 compte comme un refus (règle « 4xx = refus ») | pas de doublon, mais « Refusé » affiché pour une erreur temporaire | classer ces deux codes en résultat inconnu |
-| Solde affiché parfois périmé | un envoi au-dessus du solde réel est refusé par le serveur | assumé : le serveur tranche, l'heure de mise à jour est affichée |
-| App tuée entre la réponse d'un renouvellement et son enregistrement | le jeton gardé est déjà consommé : reconnexion par SMS (aucun doublon) | tolérer l'ancien jeton quelques secondes côté serveur |
-| Déconnexion hors ligne | la session serveur reste valide jusqu'à expiration, mais son jeton est déjà effacé du téléphone | retenter la révocation au lancement suivant |
-| Surcouches Android agressives (OPPO, Xiaomi…) | une app fermée de force peut ne plus recevoir de notifications jusqu'à sa réouverture | demander d'autoriser le démarrage automatique |
-| Canal de notification par défaut de FCM | notifications rangées sous un canal générique | déclarer un canal « Transferts » |
-| Aucune limite d'envoi de codes SMS par numéro (serveur simulé) | seuls les essais par code sont limités (5) | limiter par numéro et par adresse IP |
-| Permission `INTERNET` héritée du manifeste de firebase_messaging | rien ne la garantit si ce paquet change | la déclarer dans le manifeste principal |
-| Fichiers de configuration Firebase versionnés | identifiants client, pas des secrets selon Google, mais ils désignent un vrai projet | restreindre la clé d'API dans Google Cloud, ou les générer hors du dépôt |
-| Routes `/admin` sans protection | n'importe qui sur le réseau peut piloter le serveur simulé | normal pour une démo ; absentes d'un vrai serveur |
-| Serveur simulé en mémoire | un redémarrage efface comptes, transferts et sessions | une base de données côté serveur |
-
 
 ## Ce qui manque et comment je le ferais
 
