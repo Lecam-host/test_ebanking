@@ -21,7 +21,9 @@ Stack : Flutter 3.47 (Dart 3), Riverpod 3 sans génération de code, Dio, Drift 
 flutter_secure_storage, go_router, firebase_messaging, local_auth. Interface d'après le kit
 Figma « ibank / finpay ».
 
-**Vidéo de démonstration** (2 min 34, émulateur Android) : [`docs/demo.mp4`](docs/demo.mp4).
+**Vidéo de démonstration** (2 min 34, émulateur Android) :
+[à regarder sur Google Drive](https://drive.google.com/file/d/1WrCsaJ-MB3LBJ1DwSlpOFV33azGud8xy/view?usp=sharing),
+ou le fichier [`docs/demo.mp4`](docs/demo.mp4) du dépôt.
 Connexion, envoi et notifications, app tuée juste après « Confirmer », serveur qui répond après
 30 s, session expirée, notification avec l'app fermée, téléphone volé.
 
