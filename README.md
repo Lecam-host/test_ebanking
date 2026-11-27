@@ -25,6 +25,18 @@ Figma « ibank / finpay ».
 Connexion, envoi et notifications, app tuée juste après « Confirmer », serveur qui répond après
 30 s, session expirée, notification avec l'app fermée, téléphone volé.
 
+### Captures
+
+Tirées de la vidéo, sur un compte de test.
+
+| Connexion | Accueil | Récapitulatif | Transfert envoyé | Bandeau, app ouverte |
+|:-:|:-:|:-:|:-:|:-:|
+| <img src="docs/screens/01-connexion.png" width="160" alt="Connexion par numéro de téléphone"> | <img src="docs/screens/02-accueil.png" width="160" alt="Accueil avec le solde"> | <img src="docs/screens/03-recapitulatif.png" width="160" alt="Récapitulatif validé par le code secret"> | <img src="docs/screens/04-transfert-envoye.png" width="160" alt="Transfert envoyé"> | <img src="docs/screens/05-bandeau-app-ouverte.png" width="160" alt="Bandeau de notification avec l'app ouverte"> |
+
+| Notification système | Historique hors ligne | Vérification en cours | Serveur lent | Session révoquée |
+|:-:|:-:|:-:|:-:|:-:|
+| <img src="docs/screens/06-notification.png" width="160" alt="Notification Transfert payé"> | <img src="docs/screens/07-historique-hors-ligne.png" width="160" alt="Historique en mode avion"> | <img src="docs/screens/08-verification-en-cours.png" width="160" alt="Transfert en vérification après une coupure"> | <img src="docs/screens/09-serveur-lent.png" width="160" alt="Pas de réponse après 20 s, Réessayer"> | <img src="docs/screens/10-session-revoquee.png" width="160" alt="Session révoquée"> |
+
 ## Sommaire
 
 - [Lancer le projet](#lancer-le-projet)
